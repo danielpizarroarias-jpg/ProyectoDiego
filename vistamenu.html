@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroids Menu</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .menu-container {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: clamp(40px, 10vw, 90px);
+            margin-bottom: 50px;
+            letter-spacing: 15px;
+            font-weight: 100;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+        }
+
+        .menu-options {
+            list-style: none;
+            padding: 0;
+        }
+
+        .option {
+            font-size: 24px;
+            margin: 20px 0;
+            cursor: pointer;
+            letter-spacing: 5px;
+            transition: all 0.2s;
+            color: #888;
+        }
+
+        .option.selected {
+            color: white;
+            transform: scale(1.2);
+            text-shadow: 0 0 10px white;
+        }
+
+        .option.selected::before {
+            content: '>';
+            margin-right: 15px;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="menu-container">
+        <h1>ASTEROIDS</h1>
+        <ul class="menu-options">
+            <li class="option selected" data-index="0">LOCAL</li>
+            <li class="option" data-index="1">ONLINE</li>
+            <li class="option" data-index="2">SALIR</li>
+        </ul>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const options = document.querySelectorAll('.option');
+        let currentIndex = 0;
+
+        // Configuración del fondo animado
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let asteroids = [];
+
+        class Asteroid {
+            constructor() {
+                this.init();
+            }
+            init() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 25 + 15;
+                this.speedX = (Math.random() - 0.5) * 1;
+                this.speedY = (Math.random() - 0.5) * 1;
+                this.points = [];
+                const vertices = 7 + Math.floor(Math.random() * 5);
+                for (let i = 0; i < vertices; i++) {
+                    const angle = (i / vertices) * Math.PI * 2;
+                    const dist = this.size * (0.6 + Math.random() * 0.4);
+                    this.points.push({x: Math.cos(angle) * dist, y: Math.sin(angle) * dist});
+                }
+            }
+            draw() {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.points[0].x, this.y + this.points[0].y);
+                for (let i = 1; i < this.points.length; i++) {
+                    ctx.lineTo(this.x + this.points[i].x, this.y + this.points[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+        }
+
+        function setup() {
+            asteroids = [];
+            for (let i = 0; i < 15; i++) asteroids.push(new Asteroid());
+        }
+
+        function animate() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            asteroids.forEach(a => { a.update(); a.draw(); });
+            requestAnimationFrame(animate);
+        }
+
+        // Lógica del Menú
+        function updateSelection() {
+            options.forEach((opt, i) => {
+                opt.classList.toggle('selected', i === currentIndex);
+            });
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+                currentIndex = (currentIndex > 0) ? currentIndex - 1 : options.length - 1;
+                updateSelection();
+            } else if (e.key === 'ArrowDown') {
+                currentIndex = (currentIndex < options.length - 1) ? currentIndex + 1 : 0;
+                updateSelection();
+            } else if (e.key === 'Enter') {
+                alert('Seleccionaste: ' + options[currentIndex].innerText);
+            }
+        });
+
+        options.forEach((opt, i) => {
+            opt.addEventListener('mouseover', () => {
+                currentIndex = i;
+                updateSelection();
+            });
+            opt.addEventListener('click', () => {
+                alert('Iniciando: ' + opt.innerText);
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            setup();
+        });
+
+        setup();
+        animate();
+    </script>
+</body>
+</html>

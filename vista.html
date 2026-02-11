@@ -68,10 +68,11 @@
 
 
         document.addEventListener('click', () => {
-            const startMessage = document.getElementById('startMessage');
-            startMessage.style.display = 'none';
+            /*Pasar a vista menu*/
+            window.location.href = "vistamenu.html";
+
         });
-        
+
         class Asteroid {
             constructor() {
                 this.x = Math.random() * canvas.width;
