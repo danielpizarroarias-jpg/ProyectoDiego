@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asteroids - Configuración Local</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1; /* El juego al fondo */
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            pointer-events: none;
+            text-shadow: 0 0 5px #fff;
+            display: none;
+            z-index: 10;
+        }
+
+        /* EL MENÚ TIENE MÁS Z-INDEX PARA RECIBIR CLICS */
+        .overlay-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid white;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+            width: 400px;
+            z-index: 1000; /* Z-Index muy alto para asegurar que detecta el clic */
+        }
+
+        h1 {
+            font-size: 40px;
+            margin: 0 0 20px 0;
+            text-shadow: 0 0 10px white;
+            letter-spacing: 5px;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: #aaa;
+            margin-top: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .selector-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-select {
+            background: black;
+            color: #888;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-select:hover {
+            border-color: white;
+            color: white;
+            background: #111;
+        }
+
+        .btn-select.active {
+            background: white;
+            color: black;
+            font-weight: bold;
+            box-shadow: 0 0 10px white;
+        }
+
+        .btn-main {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+            padding: 15px 30px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            cursor: pointer;
+            margin-top: 30px;
+            text-transform: uppercase;
+            width: 100%;
+        }
+
+        .btn-main:hover {
+            background: white;
+            color: black;
+        }
+
+        #gameOverScreen { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        PUNTOS: <span id="score">0</span> <br>
+        VIDAS: <span id="lives">3</span>
+    </div>
+
+    <div id="configScreen" class="overlay-screen">
+        <h1>PREPARAR<br>MISIÓN</h1>
+        
+        <h2>DIFICULTAD</h2>
+        <div class="selector-group" id="diffGroup">
+            <button class="btn-select" data-type="diff" data-value="easy">CADETE</button>
+            <button class="btn-select active" data-type="diff" data-value="normal">PILOTO</button>
+            <button class="btn-select" data-type="diff" data-value="hard">AS</button>
+        </div>
+
+        <h2>COLOR DE NAVE</h2>
+        <div class="selector-group" id="colorGroup">
+            <button class="btn-select active" data-type="color" data-value="white">BLANCO</button>
+            <button class="btn-select" data-type="color" data-value="#00ff00" style="color:#00ff00; border-color:#00ff00;">VERDE</button>
+            <button class="btn-select" data-type="color" data-value="#ff0000" style="color:#ff0000; border-color:#ff0000;">ROJO</button>
+        </div>
+
+        <button class="btn-main" id="btnStart">DESPEGAR</button>
+        <button class="btn-select" id="btnExit" style="margin-top:10px; border:none; width:100%;">VOLVER AL MENÚ</button>
+    </div>
