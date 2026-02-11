@@ -2,141 +2,269 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asteroids - Configuración Local</title>
+    <title>Asteroids - UI Detallada</title>
     <style>
-        body {
-            margin: 0;
-            background-color: black;
-            color: white;
-            font-family: 'Courier New', Courier, monospace;
-            overflow: hidden;
-            user-select: none;
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden; background-color: black;
+            cursor: crosshair;
         }
-
-        canvas {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1; /* El juego al fondo */
-        }
-
-        #ui {
+        canvas { display: block; }
+        
+        /* Interfaz de Usuario durante la partida (Arriba Izquierda) */
+        #ui-ingame {
             position: absolute;
             top: 20px;
             left: 20px;
-            font-size: 20px;
-            pointer-events: none;
-            text-shadow: 0 0 5px #fff;
-            display: none;
-            z-index: 10;
-        }
-
-        /* EL MENÚ TIENE MÁS Z-INDEX PARA RECIBIR CLICS */
-        .overlay-screen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            background: rgba(0, 0, 0, 0.95);
-            border: 2px solid white;
-            padding: 40px;
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
-            width: 400px;
-            z-index: 1000; /* Z-Index muy alto para asegurar que detecta el clic */
-        }
-
-        h1 {
-            font-size: 40px;
-            margin: 0 0 20px 0;
-            text-shadow: 0 0 10px white;
-            letter-spacing: 5px;
-        }
-
-        h2 {
-            font-size: 18px;
-            color: #aaa;
-            margin-top: 20px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-        }
-
-        .selector-group {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .btn-select {
-            background: black;
-            color: #888;
-            border: 1px solid #555;
-            padding: 8px 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
-
-        .btn-select:hover {
-            border-color: white;
             color: white;
-            background: #111;
-        }
-
-        .btn-select.active {
-            background: white;
-            color: black;
-            font-weight: bold;
-            box-shadow: 0 0 10px white;
-        }
-
-        .btn-main {
-            background: transparent;
-            color: white;
-            border: 2px solid white;
-            padding: 15px 30px;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 20px;
-            cursor: pointer;
-            margin-top: 30px;
+            pointer-events: none;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5); /* Fondo sutil para legibilidad */
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .ui-row {
+            font-size: 18px;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
             text-transform: uppercase;
-            width: 100%;
         }
 
-        .btn-main:hover {
-            background: white;
-            color: black;
+        .ui-value {
+            color: #00ff00; /* Verde neón para los valores */
+            font-weight: bold;
         }
 
-        #gameOverScreen { display: none; }
+        /* Menú de Inicio y Game Over (Centrado) */
+        .overlay-menu {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            color: white; font-family: 'Courier New', Courier, monospace;
+            text-align: center; z-index: 20;
+        }
+
+        h1 { font-size: 80px; margin: 0; letter-spacing: 15px; text-shadow: 0 0 15px white; }
+        
+        button {
+            background: transparent; color: white; border: 2px solid white;
+            padding: 15px 30px; cursor: pointer; font-family: inherit;
+            font-size: 20px; pointer-events: auto; margin-top: 25px;
+            transition: 0.2s;
+        }
+        button:hover { background: white; color: black; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        PUNTOS: <span id="score">0</span> <br>
-        VIDAS: <span id="lives">3</span>
+    <div id="ui-ingame" class="hidden">
+        <div class="ui-row">Puntos: <span id="current-score" class="ui-value">0</span></div>
+        <div class="ui-row">Mejor Puntuación: <span id="best-score" class="ui-value">0</span></div>
+        <div class="ui-row">Vidas: <span id="lives-icons" class="ui-value"></span></div>
     </div>
 
-    <div id="configScreen" class="overlay-screen">
-        <h1>PREPARAR<br>MISIÓN</h1>
+    <div id="menu-overlay" class="overlay-menu">
+        <h1 id="menu-title">ASTEROIDS</h1>
+        <div id="stats-box">
+            <p id="final-stats" class="hidden" style="font-size: 20px; color: #aaa;">
+                Tu puntuación: <span id="last-score">0</span>
+            </p>
+        </div>
+        <button onclick="startGame()">EMPEZAR JUEGO</button>
+        <p style="margin-top: 30px; font-size: 14px; opacity: 0.6;">
+            W-A-S-D: Movimiento | CLIC: Disparar
+        </p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // UI
+    const menuOverlay = document.getElementById('menu-overlay');
+    const uiInGame = document.getElementById('ui-ingame');
+    const scoreEl = document.getElementById('current-score');
+    const bestEl = document.getElementById('best-score');
+    const livesEl = document.getElementById('lives-icons');
+    const lastScoreEl = document.getElementById('last-score');
+    const finalStats = document.getElementById('final-stats');
+    const menuTitle = document.getElementById('menu-title');
+
+    let score = 0, highScore = 0;
+    let gameState = 'MENU';
+    let asteroids = [], lasers = [], keys = {}, ship;
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function spawnAsteroids(count) {
+        for (let i = 0; i < count; i++) {
+            let x, y;
+            do {
+                x = Math.random() * canvas.width;
+                y = Math.random() * canvas.height;
+            } while (ship && Math.hypot(ship.x - x, ship.y - y) < 150);
+            asteroids.push(new Asteroid(x, y, 40));
+        }
+    }
+
+    function startGame() {
+        gameState = 'PLAYING';
+        score = 0;
+        lasers = [];
+        asteroids = [];
+        spawnShip();
+        spawnAsteroids(6);
         
-        <h2>DIFICULTAD</h2>
-        <div class="selector-group" id="diffGroup">
-            <button class="btn-select" data-type="diff" data-value="easy">CADETE</button>
-            <button class="btn-select active" data-type="diff" data-value="normal">PILOTO</button>
-            <button class="btn-select" data-type="diff" data-value="hard">AS</button>
-        </div>
+        menuOverlay.classList.add('hidden');
+        uiInGame.classList.remove('hidden');
+        scoreEl.innerText = "0";
+        bestEl.innerText = highScore;
+        updateLivesUI();
+    }
 
-        <h2>COLOR DE NAVE</h2>
-        <div class="selector-group" id="colorGroup">
-            <button class="btn-select active" data-type="color" data-value="white">BLANCO</button>
-            <button class="btn-select" data-type="color" data-value="#00ff00" style="color:#00ff00; border-color:#00ff00;">VERDE</button>
-            <button class="btn-select" data-type="color" data-value="#ff0000" style="color:#ff0000; border-color:#ff0000;">ROJO</button>
-        </div>
+    function spawnShip() {
+        ship = {
+            x: canvas.width / 2, y: canvas.height / 2,
+            r: 12, a: 90 / 180 * Math.PI,
+            thrust: { x: 0, y: 0 }, rot: 0,
+            lives: 3, blinkTime: 60, thrusting: false
+        };
+    }
 
-        <button class="btn-main" id="btnStart">DESPEGAR</button>
-        <button class="btn-select" id="btnExit" style="margin-top:10px; border:none; width:100%;">VOLVER AL MENÚ</button>
-    </div>
+    function updateLivesUI() {
+        livesEl.innerText = "▲ ".repeat(ship.lives);
+    }
+
+    function gameOver() {
+        gameState = 'MENU';
+        if (score > highScore) highScore = score;
+        
+        menuTitle.innerText = "FIN DEL JUEGO";
+        lastScoreEl.innerText = score;
+        finalStats.classList.remove('hidden');
+        
+        menuOverlay.classList.remove('hidden');
+        uiInGame.classList.add('hidden');
+        asteroids = [];
+        spawnAsteroids(8);
+    }
+
+    function Asteroid(x, y, r) {
+        this.x = x; this.y = y; this.r = r;
+        this.xv = (Math.random() * 2 - 1) * 1.5;
+        this.yv = (Math.random() * 2 - 1) * 1.5;
+        this.a = Math.random() * Math.PI * 2;
+        this.vert = Math.floor(Math.random() * 5 + 7);
+        this.offset = Array.from({length: this.vert}, () => Math.random() * 0.4 + 0.8);
+    }
+
+    window.addEventListener("keydown", e => keys[e.code] = true);
+    window.addEventListener("keyup", e => keys[e.code] = false);
+    window.addEventListener("mousedown", e => {
+        if (gameState === 'PLAYING' && e.button === 0) shoot();
+    });
+
+    function shoot() {
+        if (lasers.length < 10) {
+            lasers.push({
+                x: ship.x + 4/3 * ship.r * Math.cos(ship.a),
+                y: ship.y - 4/3 * ship.r * Math.sin(ship.a),
+                xv: 12 * Math.cos(ship.a), yv: -12 * Math.sin(ship.a), dist: 0
+            });
+        }
+    }
+
+    function update() {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (gameState === 'PLAYING') {
+            ship.rot = keys["KeyA"] ? 0.1 : keys["KeyD"] ? -0.1 : 0;
+            if (keys["KeyW"]) {
+                ship.thrust.x += 0.2 * Math.cos(ship.a);
+                ship.thrust.y -= 0.2 * Math.sin(ship.a);
+            } else {
+                ship.thrust.x *= 0.98; ship.thrust.y *= 0.98;
+            }
+            ship.a += ship.rot; ship.x += ship.thrust.x; ship.y += ship.thrust.y;
+
+            if (ship.x < -ship.r) ship.x = canvas.width + ship.r; else if (ship.x > canvas.width + ship.r) ship.x = -ship.r;
+            if (ship.y < -ship.r) ship.y = canvas.height + ship.r; else if (ship.y > canvas.height + ship.r) ship.y = -ship.r;
+
+            if (ship.blinkTime === 0 || Math.floor(ship.blinkTime / 5) % 2 === 0) {
+                ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ship.x + 4/3 * ship.r * Math.cos(ship.a), ship.y - 4/3 * ship.r * Math.sin(ship.a));
+                ctx.lineTo(ship.x - ship.r * (2/3 * Math.cos(ship.a) + Math.sin(ship.a)), ship.y + ship.r * (2/3 * Math.sin(ship.a) - Math.cos(ship.a)));
+                ctx.lineTo(ship.x - ship.r * (2/3 * Math.cos(ship.a) - Math.sin(ship.a)), ship.y + ship.r * (2/3 * Math.sin(ship.a) + Math.cos(ship.a)));
+                ctx.closePath(); ctx.stroke();
+            }
+            if (ship.blinkTime > 0) ship.blinkTime--;
+
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                lasers[i].x += lasers[i].xv; lasers[i].y += lasers[i].yv; lasers[i].dist += 12;
+                ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(lasers[i].x, lasers[i].y, 2, 0, Math.PI*2); ctx.fill();
+                if (lasers[i].dist > canvas.width) lasers.splice(i, 1);
+            }
+        }
+
+        for (let i = asteroids.length - 1; i >= 0; i--) {
+            let a = asteroids[i];
+            a.x += a.xv; a.y += a.yv;
+            if (a.x < -a.r) a.x = canvas.width + a.r; else if (a.x > canvas.width + a.r) a.x = -a.r;
+            if (a.y < -a.r) a.y = canvas.height + a.r; else if (a.y > canvas.height + a.r) a.y = -a.r;
+
+            ctx.strokeStyle = "white"; ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(a.x + a.r * a.offset[0] * Math.cos(a.a), a.y + a.r * a.offset[0] * Math.sin(a.a));
+            for (let j = 1; j < a.vert; j++) ctx.lineTo(a.x + a.r * a.offset[j] * Math.cos(a.a + j * Math.PI * 2 / a.vert), a.y + a.r * a.offset[j] * Math.sin(a.a + j * Math.PI * 2 / a.vert));
+            ctx.closePath(); ctx.stroke();
+
+            if (gameState === 'PLAYING') {
+                for (let j = lasers.length - 1; j >= 0; j--) {
+                    if (Math.hypot(lasers[j].x - a.x, lasers[j].y - a.y) < a.r) {
+                        lasers.splice(j, 1);
+                        if (a.r > 15) {
+                            asteroids.push(new Asteroid(a.x, a.y, a.r / 2));
+                            asteroids.push(new Asteroid(a.x, a.y, a.r / 2));
+                        }
+                        asteroids.splice(i, 1);
+                        score += 100; scoreEl.innerText = score;
+                        // Actualizar mejor puntuación en tiempo real
+                        if (score > highScore) {
+                            highScore = score;
+                            bestEl.innerText = highScore;
+                        }
+                        break;
+                    }
+                }
+                if (ship.blinkTime === 0 && Math.hypot(ship.x - a.x, ship.y - a.y) < ship.r + a.r) {
+                    ship.lives--; updateLivesUI();
+                    if (ship.lives <= 0) gameOver();
+                    else { let l = ship.lives; spawnShip(); ship.lives = l; }
+                }
+            }
+        }
+        if (gameState === 'PLAYING' && asteroids.length === 0) spawnAsteroids(8);
+
+        requestAnimationFrame(update);
+    }
+
+    spawnAsteroids(8);
+    update();
+</script>
+</body>
+</html>
