@@ -183,6 +183,25 @@
 
         setup();
         animate();
+
+
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('fromMenu', 'true');
+        });
+
+        window.addEventListener('load', () => {
+            // Si viene de vista.html, no hacer nada (ya estamos en menú)
+            if (localStorage.getItem('fromVista') === 'true') {
+                localStorage.removeItem('fromVista');
+                return;
+            }
+            // Si es un reload directo en vistamenu, ir a vista
+            window.location.href = "vista.html";
+        });
+
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('fromVista', 'false');
+        });
     </script>
 </body>
 </html>

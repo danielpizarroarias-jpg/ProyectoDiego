@@ -68,9 +68,8 @@
 
 
         document.addEventListener('click', () => {
-            /*Pasar a vista menu*/
+            localStorage.setItem('fromVista', 'true');
             window.location.href = "vistamenu.html";
-
         });
 
         class Asteroid {
