@@ -77,9 +77,9 @@
     <div class="menu-container">
         <h1>ASTEROIDS</h1>
         <ul class="menu-options">
-            <li class="option selected" data-index="0">LOCAL</li>
-            <li class="option" data-index="1">ONLINE</li>
-            <li class="option" data-index="2">SALIR</li>
+            <li class="option selected" data-action="local">LOCAL</li>
+            <li class="option" data-action="online">ONLINE</li>
+            <li class="option" data-action="salir">SALIR</li>
         </ul>
     </div>
 
@@ -89,16 +89,13 @@
         const options = document.querySelectorAll('.option');
         let currentIndex = 0;
 
-        // Configuración del fondo animado
+        // --- FONDO ANIMADO ---
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-
         let asteroids = [];
 
         class Asteroid {
-            constructor() {
-                this.init();
-            }
+            constructor() { this.init(); }
             init() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
@@ -146,13 +143,34 @@
             requestAnimationFrame(animate);
         }
 
-        // Lógica del Menú
+        // --- LÓGICA DEL MENÚ ---
+        
         function updateSelection() {
             options.forEach((opt, i) => {
                 opt.classList.toggle('selected', i === currentIndex);
             });
         }
 
+        function selectOption(index) {
+            const action = options[index].getAttribute('data-action');
+            
+            if (action === 'local') {
+                // REDIRECCIÓN AL JUEGO LOCAL
+                window.location.href = "vistajuegolocal.html";
+            } 
+            else if (action === 'online') {
+                alert("Modo Online próximamente...");
+                // window.location.href = "vistajuegoonline.html"; 
+            } 
+            else if (action === 'salir') {
+                // Intenta cerrar la ventana
+                window.close();
+                // Si no funciona (por seguridad del navegador), redirige
+                if(!window.closed) window.location.href = "vista.html";
+            }
+        }
+
+        // Control por Teclado
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowUp') {
                 currentIndex = (currentIndex > 0) ? currentIndex - 1 : options.length - 1;
@@ -161,47 +179,35 @@
                 currentIndex = (currentIndex < options.length - 1) ? currentIndex + 1 : 0;
                 updateSelection();
             } else if (e.key === 'Enter') {
-                alert('Seleccionaste: ' + options[currentIndex].innerText);
+                selectOption(currentIndex);
             }
         });
 
+        // Control por Ratón
         options.forEach((opt, i) => {
             opt.addEventListener('mouseover', () => {
                 currentIndex = i;
                 updateSelection();
             });
             opt.addEventListener('click', () => {
-                alert('Iniciando: ' + opt.innerText);
+                selectOption(i);
             });
         });
 
+        // Gestión de redimensionado y carga
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             setup();
         });
 
-        setup();
-        animate();
-
-
+        // Evitar bucles de redirección extraños
         window.addEventListener('beforeunload', () => {
             localStorage.setItem('fromMenu', 'true');
         });
 
-        window.addEventListener('load', () => {
-            // Si viene de vista.html, no hacer nada (ya estamos en menú)
-            if (localStorage.getItem('fromVista') === 'true') {
-                localStorage.removeItem('fromVista');
-                return;
-            }
-            // Si es un reload directo en vistamenu, ir a vista
-            window.location.href = "vista.html";
-        });
-
-        window.addEventListener('beforeunload', () => {
-            localStorage.setItem('fromVista', 'false');
-        });
+        setup();
+        animate();
     </script>
 </body>
 </html>
