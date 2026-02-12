@@ -2,86 +2,95 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asteroids - Neon Life Up Edition</title>
+    <title>Asteroids - Neon Evolution</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; cursor: crosshair; user-select: none; }
         canvas { display: block; }
         
-        /* UI INGAME */
-        #ui-ingame {
+        /* UI MONEDAS */
+        #money-panel {
+            position: absolute; top: 20px; right: 20px; 
+            background: rgba(0, 0, 0, 0.9); border: 2px solid #ffd700;
+            padding: 10px 20px; border-radius: 50px; color: #ffd700;
+            font-family: 'Courier New', monospace; font-size: 24px; font-weight: bold; z-index: 20;
+        }
+
+        /* UI IZQUIERDA */
+        #ui-left {
             position: absolute; top: 20px; left: 20px; color: white; font-family: 'Courier New', monospace;
-            pointer-events: none; z-index: 10; background: rgba(0, 0, 0, 0.85);
-            padding: 15px; border: 1px solid #444; border-radius: 4px; min-width: 220px;
+            z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 15px; border: 1px solid #444; border-radius: 4px; min-width: 200px;
         }
-        .ui-row { font-size: 16px; margin-bottom: 5px; display: flex; justify-content: space-between; }
-        
-        #lvl-txt { color: #00f2ff; text-shadow: 0 0 8px #00f2ff; font-weight: bold; }
-        #lives-txt { color: #ff0077; text-shadow: 0 0 10px #ff0077; font-size: 20px; letter-spacing: 5px; }
+        #bar-bg { width: 100%; height: 8px; background: #222; margin-top: 10px; border-radius: 4px; overflow: hidden; }
+        #bar-fill { height: 100%; background: #00f2ff; width: 0%; }
 
-        #bar-bg { width: 100%; height: 10px; background: #111; margin-top: 8px; border: 1px solid #333; border-radius: 5px; overflow: hidden; }
-        #bar-fill { height: 100%; background: linear-gradient(90deg, #00ff88, #00ffcc); width: 0%; transition: width 0.4s ease-out; }
-        
-        .overlay {
-            position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: white; font-family: 'Courier New', monospace;
-            background: rgba(0,0,0,0.95); z-index: 100; text-align: center;
+        /* MENSAJE VIOLETA FOSFORESCENTE CENTRADO */
+        #level-notice {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ff00ff; font-family: 'Courier New', monospace; font-size: 50px; font-weight: bold;
+            text-align: center; text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+            pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 100;
         }
 
-        /* PAUSA B&W */
-        #pause-menu { 
-            background: #000; z-index: 110; border: 4px solid #fff; 
-            width: 320px; padding: 40px; left: 50%; top: 50%; 
-            transform: translate(-50%, -50%); position: absolute;
+        /* MENÚS */
+        #shop-menu, #boss-reward-menu, #pause-menu { 
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            background: #000; z-index: 150; border: 4px solid #fff; 
+            width: 380px; padding: 40px; text-align: center; color: white; font-family: 'Courier New', monospace;
         }
-        #pause-menu h2 { font-size: 40px; margin-top: 0; letter-spacing: 8px; border-bottom: 2px solid #fff; padding-bottom: 10px; }
+        #shop-menu { border-color: #ffd700; }
+        #boss-reward-menu { border-color: #ff00ff; }
 
         button {
-            background: #000; color: #fff; border: 2px solid #fff; padding: 12px 30px;
-            font-size: 18px; cursor: pointer; font-weight: bold; margin-top: 20px; 
+            background: #000; color: #fff; border: 2px solid #fff; padding: 12px;
+            font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; 
             text-transform: uppercase; width: 100%; font-family: 'Courier New', monospace;
         }
         button:hover { background: #fff; color: #000; }
-
-        /* AVISO SUBIDA NIVEL */
-        #level-up-container {
-            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
-            font-family: 'Courier New', monospace; text-align: center;
-            opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: 50;
-        }
-        #level-up-text { font-size: 60px; color: #00f2ff; text-shadow: 0 0 20px #00f2ff; margin: 0; }
-        #life-up-text { font-size: 30px; color: #ff0077; text-shadow: 0 0 15px #ff0077; margin: 10px 0 0 0; font-weight: bold; }
-
+        .reward-btn { border-color: #ff00ff; color: #ff00ff; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="ui-ingame" class="hidden">
-        <div class="ui-row"><span>SECTOR:</span> <span id="lvl-txt">1</span></div>
-        <div class="ui-row"><span>SCORE:</span> <span id="score-txt">0</span></div>
-        <div class="ui-row"><span>META:</span> <span id="goal-txt">1000</span></div>
+    <div id="money-panel" class="hidden"><span id="money-count">0</span></div>
+
+    <div id="ui-left" class="hidden">
+        <div>SECTOR: <span id="lvl-txt" style="color:#00f2ff">1</span></div>
         <div id="bar-bg"><div id="bar-fill"></div></div>
-        <div class="ui-row" style="margin-top:12px"><span>VIDAS:</span> <span id="lives-txt"></span></div>
+        <div style="margin-top:10px">VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
     </div>
 
-    <div id="level-up-container">
-        <p id="level-up-text">SECTOR <span id="next-lvl-num"></span></p>
-        <p id="life-up-text" class="hidden">+1 VIDA</p>
-    </div>
-
-    <div id="menu" class="overlay">
-        <h1 id="title" style="font-size: 50px; letter-spacing: 10px; border: 4px solid #fff; padding: 20px;">ASTEROIDS</h1>
-        <div id="stats" class="hidden">
-            <p style="font-size: 20px; color: #ff0077;">SISTEMA COLAPSADO</p>
-            <p>PUNTUACIÓN FINAL: <span id="final-score" style="color: #00ff88;">0</span></p>
-        </div>
-        <button style="width: 250px;" onclick="initGame()">INICIAR</button>
-    </div>
+    <div id="level-notice">SECTOR 2<br><span style="font-size:25px">+1 VIDA</span></div>
 
     <div id="pause-menu" class="hidden">
-        <h2>PAUSA</h2>
+        <h1 style="margin-top:0">PAUSA</h1>
         <button onclick="togglePause()">CONTINUAR</button>
-        <button onclick="goToMenu()">SALIR AL MENÚ</button>
+        <button onclick="location.reload()">REINICIAR JUEGO</button>
+    </div>
+
+    <div id="boss-ui" style="position:absolute; top:20px; left:50%; transform:translateX(-50%); width:300px; text-align:center; font-family:monospace; z-index:50;" class="hidden">
+        <div style="color:red; font-weight:bold">BOSS</div>
+        <div style="width:100%; height:10px; background:#300; border:1px solid red;"><div id="boss-hp-fill" style="height:100%; background:red; width:100%"></div></div>
+    </div>
+
+    <div id="shop-menu" class="hidden">
+        <h2 style="color:#ffd700">TIENDA</h2>
+        <p>COSTE: <span id="next-price">50</span> ORO</p>
+        <button onclick="buyUpgrade('fireRate')">CADENCIA</button>
+        <button onclick="buyUpgrade('thrust')">MOTOR</button>
+        <button id="btn-multishot" style="color:#00f2ff; border-color:#00f2ff" class="hidden" onclick="buyUpgrade('multishot')">BALA EXTRA</button>
+    </div>
+
+    <div id="boss-reward-menu" class="hidden">
+        <h2 style="color:#ff00ff">BOSS DESTRUIDO</h2>
+        <button class="reward-btn" onclick="applySuperUpgrade('bala')">BALA EXTRA</button>
+        <button class="reward-btn" onclick="applySuperUpgrade('cadencia')">SUPER CADENCIA</button>
+        <button class="reward-btn" onclick="applySuperUpgrade('motor')">SUPER MOTOR</button>
+    </div>
+
+    <div id="start-menu" style="position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:200;">
+        <h1 style="color:white; font-family:'Courier New'; border:4px solid #fff; padding:20px;">ASTEROIDS</h1>
+        <button style="width:200px" onclick="initGame()">JUGAR</button>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -90,190 +99,236 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     
-    const menu = document.getElementById('menu');
-    const ui = document.getElementById('ui-ingame');
-    const pauseMenu = document.getElementById('pause-menu');
-    const levelUpContainer = document.getElementById('level-up-container');
-    const lifeUpMsg = document.getElementById('life-up-text');
-    
-    let ship, asteroids, lasers, score, level, nextGoal, gameState, keys, mouse;
-    let loopId = null;
+    let ship, asteroids, lasers, enemyLasers, boss, score, level, nextGoal, money, upgradeCost, upgradeCount, gameState, keys, mouse;
+    let fireDelay, lastFire = 0, thrustPower, projectiles;
 
     function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', resize);
     resize();
 
-    keys = {};
-    mouse = { x: 0, y: 0 };
+    keys = {}; mouse = { x: 0, y: 0 };
     window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
     window.addEventListener('mousedown', e => { if(e.button === 0 && gameState === 'PLAYING') shoot(); });
-    
     window.addEventListener('keydown', e => { 
+        if(e.code === 'Escape') togglePause();
         keys[e.code] = true; 
-        if(e.code === 'Space' && gameState === 'PLAYING') shoot();
-        if(e.code === 'Escape') {
-            if(gameState === 'PLAYING' || gameState === 'PAUSED') togglePause();
-        }
     });
     window.addEventListener('keyup', e => keys[e.code] = false);
 
     function togglePause() {
-        if(gameState === 'PLAYING') {
+        if (gameState === 'PLAYING') {
             gameState = 'PAUSED';
-            pauseMenu.classList.remove('hidden');
-        } else if(gameState === 'PAUSED') {
+            document.getElementById('pause-menu').classList.remove('hidden');
+        } else if (gameState === 'PAUSED') {
             gameState = 'PLAYING';
-            pauseMenu.classList.add('hidden');
-            run(); 
+            document.getElementById('pause-menu').classList.add('hidden');
+            run();
         }
     }
 
-    function goToMenu() {
-        gameState = 'DEAD';
-        pauseMenu.classList.add('hidden');
-        ui.classList.add('hidden');
-        menu.classList.remove('hidden');
-        document.getElementById('stats').classList.add('hidden');
-        if(loopId) cancelAnimationFrame(loopId);
+    function Asteroid(x, y, r, levelMult) {
+        this.x = x; this.y = y; this.r = r;
+        this.vx = (Math.random() - 0.5) * (Math.random() * 2 + 1) * (1 + levelMult * 0.1);
+        this.vy = (Math.random() - 0.5) * (Math.random() * 2 + 1) * (1 + levelMult * 0.1);
+        this.vert = Math.floor(Math.random() * 5 + 7);
+        this.offsets = Array.from({length: this.vert}, () => Math.random() * 0.4 + 0.8);
     }
 
     function initGame() {
-        if(loopId) cancelAnimationFrame(loopId);
         gameState = 'PLAYING';
-        score = 0; level = 1; nextGoal = 1000;
-        asteroids = []; lasers = [];
+        score = 0; level = 1; nextGoal = 1000; money = 0; upgradeCost = 50; upgradeCount = 0;
+        fireDelay = 400; thrustPower = 0.2; projectiles = 1;
+        asteroids = []; lasers = []; enemyLasers = []; boss = null;
         ship = { x: canvas.width / 2, y: canvas.height / 2, r: 12, angle: 0, velX: 0, velY: 0, blink: 120, lives: 3 };
         spawnAsteroids(5);
-        menu.classList.add('hidden');
-        pauseMenu.classList.add('hidden');
-        ui.classList.remove('hidden');
+        document.getElementById('start-menu').classList.add('hidden');
+        document.getElementById('money-panel').classList.remove('hidden');
+        document.getElementById('ui-left').classList.remove('hidden');
         updateUI();
         run();
+    }
+
+    function shoot() {
+        const now = Date.now();
+        if (now - lastFire > fireDelay) {
+            for(let i = 0; i < projectiles; i++) {
+                let offset = (i - (projectiles - 1) / 2) * 0.2;
+                lasers.push({ x: ship.x, y: ship.y, vx: Math.cos(ship.angle + offset)*12, vy: Math.sin(ship.angle + offset)*12 });
+            }
+            lastFire = now;
+        }
+    }
+
+    function nextLevel() {
+        level++;
+        nextGoal += 1000 + (level * 200);
+        let bonusTxt = "SECTOR " + level;
+        let showLife = false;
+        if (ship.lives < 3) { ship.lives++; showLife = true; }
+        
+        const notice = document.getElementById('level-notice');
+        notice.innerHTML = bonusTxt + (showLife ? "<br><span style='font-size:25px'>+1 VIDA</span>" : "");
+        notice.style.opacity = 1;
+        setTimeout(() => notice.style.opacity = 0, 1500);
+
+        if (level % 5 === 0) {
+            asteroids = [];
+            boss = { x: canvas.width / 2, y: 100, hp: 30 + (level * 5), maxHp: 30 + (level * 5), dir: 1, lastShot: Date.now() - 1200 };
+            document.getElementById('boss-ui').classList.remove('hidden');
+            gameState = 'PLAYING';
+            run();
+        } else {
+            spawnAsteroids(4 + level);
+        }
+        updateUI();
+    }
+
+    function buyUpgrade(type) {
+        money -= upgradeCost; upgradeCost += 25; upgradeCount++;
+        if(type === 'fireRate') fireDelay = Math.max(80, fireDelay - 60);
+        if(type === 'thrust') thrustPower += 0.08;
+        if(type === 'multishot') projectiles++;
+        gameState = 'PLAYING';
+        document.getElementById('shop-menu').classList.add('hidden');
+        updateUI();
+        run();
+    }
+
+    function applySuperUpgrade(type) {
+        if(type === 'bala') projectiles++;
+        if(type === 'cadencia') fireDelay /= 1.8;
+        if(type === 'motor') thrustPower *= 1.4;
+        document.getElementById('boss-reward-menu').classList.add('hidden');
+        gameState = 'PLAYING';
+        nextLevel();
+        run();
+    }
+
+    function updateUI() {
+        document.getElementById('money-count').innerText = "● " + money;
+        document.getElementById('lvl-txt').innerText = level;
+        document.getElementById('lives-txt').innerText = "▲ ".repeat(Math.max(0, ship.lives));
+        document.getElementById('next-price').innerText = upgradeCost;
+        let prog = ((score - (nextGoal - (1000 + level*200))) / (1000 + level*200)) * 100;
+        document.getElementById('bar-fill').style.width = Math.max(0, Math.min(100, prog)) + "%";
+    }
+
+    function run() {
+        if (gameState !== 'PLAYING') return;
+
+        if (money >= upgradeCost && !boss) {
+            gameState = 'SHOPPING';
+            document.getElementById('btn-multishot').classList.toggle('hidden', (upgradeCount + 1) % 2 !== 0);
+            document.getElementById('shop-menu').classList.remove('hidden');
+            return;
+        }
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Movimiento Nave
+        ship.angle = Math.atan2(mouse.y - ship.y, mouse.x - ship.x);
+        if (keys['KeyW'] || keys['ArrowUp']) {
+            ship.velX += Math.cos(ship.angle) * thrustPower;
+            ship.velY += Math.sin(ship.angle) * thrustPower;
+        }
+        ship.velX *= 0.98; ship.velY *= 0.98;
+        ship.x += ship.velX; ship.y += ship.velY;
+        if (ship.x < 0) ship.x = canvas.width; else if (ship.x > canvas.width) ship.x = 0;
+        if (ship.y < 0) ship.y = canvas.height; else if (ship.y > canvas.height) ship.y = 0;
+
+        // Dibujar Nave
+        if (ship.blink === 0 || Math.floor(ship.blink / 10) % 2 === 0) {
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(ship.x + Math.cos(ship.angle)*15, ship.y + Math.sin(ship.angle)*15);
+            ctx.lineTo(ship.x + Math.cos(ship.angle+2.4)*12, ship.y + Math.sin(ship.angle+2.4)*12);
+            ctx.lineTo(ship.x + Math.cos(ship.angle-2.4)*12, ship.y + Math.sin(ship.angle-2.4)*12);
+            ctx.closePath(); ctx.stroke();
+        }
+        if (ship.blink > 0) ship.blink--;
+
+        // Boss
+        if (boss) {
+            boss.x += (3 + level/3) * boss.dir;
+            if (boss.x > canvas.width - 60 || boss.x < 60) boss.dir *= -1;
+            ctx.strokeStyle = '#f00'; ctx.lineWidth = 4;
+            ctx.strokeRect(boss.x - 40, boss.y - 20, 80, 40);
+            if (Date.now() - boss.lastShot > 1000) {
+                enemyLasers.push({ x: boss.x, y: boss.y + 20, vy: 7 });
+                boss.lastShot = Date.now();
+            }
+            document.getElementById('boss-hp-fill').style.width = (boss.hp / boss.maxHp * 100) + "%";
+        }
+
+        // Lasers
+        for (let i = enemyLasers.length - 1; i >= 0; i--) {
+            let el = enemyLasers[i]; el.y += el.vy;
+            ctx.fillStyle = '#f00'; ctx.fillRect(el.x - 2, el.y, 4, 15);
+            if (Math.hypot(ship.x - el.x, ship.y - el.y) < 20 && ship.blink === 0) {
+                ship.lives--; ship.blink = 120; enemyLasers.splice(i, 1); updateUI();
+                if(ship.lives <= 0) location.reload();
+            }
+            if (el.y > canvas.height) enemyLasers.splice(i, 1);
+        }
+
+        for (let i = lasers.length - 1; i >= 0; i--) {
+            let l = lasers[i]; l.x += l.vx; l.y += l.vy;
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(l.x, l.y, 2, 0, 7); ctx.fill();
+            if (boss && Math.hypot(l.x - boss.x, l.y - boss.y) < 45) {
+                boss.hp--; lasers.splice(i, 1);
+                if (boss.hp <= 0) {
+                    boss = null; enemyLasers = [];
+                    document.getElementById('boss-ui').classList.add('hidden');
+                    document.getElementById('boss-reward-menu').classList.remove('hidden');
+                    gameState = 'REWARD';
+                }
+                continue;
+            }
+            if (l.x < 0 || l.x > canvas.width || l.y < 0 || l.y > canvas.height) lasers.splice(i, 1);
+        }
+
+        // Asteroides
+        if (!boss) {
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                let a = asteroids[i]; a.x += a.vx; a.y += a.vy;
+                if (a.x < -a.r) a.x = canvas.width + a.r; else if (a.x > canvas.width + a.r) a.x = -a.r;
+                if (a.y < -a.r) a.y = canvas.height + a.r; else if (a.y > canvas.height + a.r) a.y = -a.r;
+                ctx.strokeStyle = '#fff'; ctx.beginPath();
+                for(let j=0; j<a.vert; j++) {
+                    let ang = (j / a.vert) * Math.PI * 2;
+                    ctx.lineTo(a.x + Math.cos(ang) * a.r * a.offsets[j], a.y + Math.sin(ang) * a.r * a.offsets[j]);
+                }
+                ctx.closePath(); ctx.stroke();
+                if (ship.blink === 0 && Math.hypot(ship.x - a.x, ship.y - a.y) < a.r + 5) {
+                    ship.lives--; ship.blink = 120; updateUI();
+                    if (ship.lives <= 0) location.reload();
+                }
+                for (let j = lasers.length - 1; j >= 0; j--) {
+                    if (Math.hypot(lasers[j].x - a.x, lasers[j].y - a.y) < a.r) {
+                        lasers.splice(j, 1); money++; score += 100;
+                        if (a.r > 15) {
+                            asteroids.push(new Asteroid(a.x, a.y, a.r / 2, level));
+                            asteroids.push(new Asteroid(a.x, a.y, a.r / 2, level));
+                        }
+                        asteroids.splice(i, 1);
+                        updateUI();
+                        if (score >= nextGoal) nextLevel();
+                        break;
+                    }
+                }
+            }
+            if (asteroids.length < 2) spawnAsteroids(1);
+        }
+        requestAnimationFrame(run);
     }
 
     function spawnAsteroids(num) {
         for (let i = 0; i < num; i++) {
             let x, y;
-            do {
-                x = Math.random() * canvas.width;
-                y = Math.random() * canvas.height;
-            } while (Math.hypot(x - ship.x, y - ship.y) < 250);
-            asteroids.push(new Asteroid(x, y, 45));
+            do { x = Math.random()*canvas.width; y = Math.random()*canvas.height; } while (Math.hypot(x-ship.x, y-ship.y) < 150);
+            asteroids.push(new Asteroid(x, y, 40, level));
         }
-    }
-
-    function Asteroid(x, y, r) {
-        this.x = x; this.y = y; this.r = r;
-        let speed = (Math.random() * 1.2 + 0.4); 
-        this.vx = (Math.random() - 0.5) * speed;
-        this.vy = (Math.random() - 0.5) * speed;
-        this.vert = Math.floor(Math.random() * 5 + 9);
-        this.offsets = Array.from({length: this.vert}, () => Math.random() * 0.4 + 0.8);
-    }
-
-    function shoot() {
-        if (lasers.length < 15) {
-            lasers.push({ x: ship.x + Math.cos(ship.angle) * 15, y: ship.y + Math.sin(ship.angle) * 15, vx: Math.cos(ship.angle) * 12, vy: Math.sin(ship.angle) * 12 });
-        }
-    }
-
-    function updateUI() {
-        document.getElementById('lvl-txt').innerText = level;
-        document.getElementById('score-txt').innerText = score;
-        document.getElementById('goal-txt').innerText = nextGoal;
-        document.getElementById('lives-txt').innerText = "▲ ".repeat(Math.max(0, ship.lives));
-        let progress = (score / nextGoal) * 100;
-        document.getElementById('bar-fill').style.width = Math.min(100, progress) + "%";
-    }
-
-    function gameOver() {
-        gameState = 'DEAD';
-        cancelAnimationFrame(loopId);
-        document.getElementById('final-score').innerText = score;
-        document.getElementById('stats').classList.remove('hidden');
-        menu.classList.remove('hidden');
-        ui.classList.add('hidden');
-    }
-
-    function run() {
-        if (gameState !== 'PLAYING') return;
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ship.angle = Math.atan2(mouse.y - ship.y, mouse.x - ship.x);
-        
-        if (keys['KeyW'] || keys['ArrowUp']) {
-            ship.velX += Math.cos(ship.angle) * 0.2;
-            ship.velY += Math.sin(ship.angle) * 0.2;
-        } else {
-            ship.velX *= 0.98; ship.velY *= 0.98;
-        }
-
-        ship.x += ship.velX; ship.y += ship.velY;
-        if (ship.x < 0) ship.x = canvas.width; else if (ship.x > canvas.width) ship.x = 0;
-        if (ship.y < 0) ship.y = canvas.height; else if (ship.y > canvas.height) ship.y = 0;
-
-        if (ship.blink === 0 || Math.floor(ship.blink / 10) % 2 === 0) {
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(ship.x + Math.cos(ship.angle) * 15, ship.y + Math.sin(ship.angle) * 15);
-            ctx.lineTo(ship.x + Math.cos(ship.angle + 2.4) * 12, ship.y + Math.sin(ship.angle + 2.4) * 12);
-            ctx.lineTo(ship.x + Math.cos(ship.angle - 2.4) * 12, ship.y + Math.sin(ship.angle - 2.4) * 12);
-            ctx.closePath(); ctx.stroke();
-        }
-        if (ship.blink > 0) ship.blink--;
-
-        for (let i = lasers.length - 1; i >= 0; i--) {
-            let l = lasers[i];
-            l.x += l.vx; l.y += l.vy;
-            if (l.x < 0 || l.x > canvas.width || l.y < 0 || l.y > canvas.height) { lasers.splice(i, 1); continue; }
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(l.x, l.y, 2, 0, 7); ctx.fill();
-        }
-
-        for (let i = asteroids.length - 1; i >= 0; i--) {
-            let a = asteroids[i];
-            a.x += a.vx; a.y += a.vy;
-            if (a.x < -a.r) a.x = canvas.width + a.r; else if (a.x > canvas.width + a.r) a.x = -a.r;
-            if (a.y < -a.r) a.y = canvas.height + a.r; else if (a.y > canvas.height + a.r) a.y = -a.r;
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath();
-            for(let j=0; j<a.vert; j++) {
-                let ang = (j / a.vert) * Math.PI * 2;
-                ctx.lineTo(a.x + Math.cos(ang) * a.r * a.offsets[j], a.y + Math.sin(ang) * a.r * a.offsets[j]);
-            }
-            ctx.closePath(); ctx.stroke();
-
-            if (ship.blink === 0 && Math.hypot(ship.x - a.x, ship.y - a.y) < a.r + 7) {
-                ship.lives--; updateUI();
-                if (ship.lives <= 0) { gameOver(); return; }
-                else { ship.x = canvas.width/2; ship.y = canvas.height/2; ship.velX = 0; ship.velY = 0; ship.blink = 120; }
-            }
-
-            for (let j = lasers.length - 1; j >= 0; j--) {
-                let l = lasers[j];
-                if (Math.hypot(l.x - a.x, l.y - a.y) < a.r) {
-                    lasers.splice(j, 1); score += 100;
-                    if (a.r > 15) { asteroids.push(new Asteroid(a.x, a.y, a.r / 2.2)); asteroids.push(new Asteroid(a.x, a.y, a.r / 2.2)); }
-                    asteroids.splice(i, 1); updateUI();
-                    if (score >= nextGoal) {
-                        level++; nextGoal += 1000 + (level * 500); 
-                        
-                        // LOGICA VIDA EXTRA
-                        let gainedLife = false;
-                        if(ship.lives < 3) { ship.lives++; gainedLife = true; }
-                        
-                        document.getElementById('next-lvl-num').innerText = level;
-                        if(gainedLife) lifeUpMsg.classList.remove('hidden');
-                        else lifeUpMsg.classList.add('hidden');
-                        
-                        levelUpContainer.style.opacity = 1;
-                        setTimeout(() => { levelUpContainer.style.opacity = 0; }, 2000);
-                        
-                        spawnAsteroids(3 + level); updateUI();
-                    }
-                    break;
-                }
-            }
-        }
-        loopId = requestAnimationFrame(run);
     }
 </script>
 </body>
