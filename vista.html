@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asteroids Retro Clone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroids - Menú Principal</title>
     <style>
         body {
             margin: 0;
@@ -14,136 +15,113 @@
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            user-select: none;
         }
 
         canvas {
-            border: 2px solid #333;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
-        .overlay {
-            position: absolute;
+        .menu-container {
+            position: relative;
+            z-index: 2;
             text-align: center;
-            pointer-events: none;
-            text-transform: uppercase;
-            letter-spacing: 5px;
         }
 
         h1 {
-            font-size: 80px;
-            margin: 0;
-            font-weight: lighter;
-            /* Efecto de brillo retro */
-            text-shadow: 0 0 10px #fff;
+            font-size: clamp(40px, 10vw, 90px);
+            margin-bottom: 50px;
+            letter-spacing: 15px;
+            font-weight: 100;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
         }
 
-        p {
-            font-size: 20px;
-            margin-top: 20px;
-            animation: blink 1.5s infinite;
+        .menu-options {
+            list-style: none;
+            padding: 0;
         }
 
-        @keyframes blink {
+        .option {
+            font-size: 24px;
+            margin: 20px 0;
+            cursor: pointer;
+            letter-spacing: 5px;
+            transition: all 0.2s;
+            color: #888;
+        }
+
+        .option.selected {
+            color: white;
+            transform: scale(1.2);
+            text-shadow: 0 0 10px white;
+        }
+
+        .option.selected::before {
+            content: '>';
+            margin-right: 15px;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
             50% { opacity: 0; }
         }
     </style>
 </head>
 <body>
 
-    <div class="overlay">
+    <canvas id="bgCanvas"></canvas>
+
+    <div class="menu-container">
         <h1>ASTEROIDS</h1>
-        <p id="startMessage">PRESS SPACE TO PLAY</p>
+        <ul class="menu-options">
+            <li class="option selected" data-action="local">LOCAL</li>
+            <li class="option" data-action="online">ONLINE</li>
+            <li class="option" data-action="salir">SALIR</li>
+        </ul>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
-
     <script>
-        const canvas = document.getElementById('gameCanvas');
+        // --- LÓGICA DEL FONDO ANIMADO ---
+        const canvas = document.getElementById('bgCanvas');
         const ctx = canvas.getContext('2d');
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
         let asteroids = [];
-
-
-        document.addEventListener('click', () => {
-            localStorage.setItem('fromVista', 'true');
-            window.location.href = "vistamenu.html";
-        });
-
-        class Asteroid {
+        class BgAsteroid {
             constructor() {
+                this.init();
+            }
+            init() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 30 + 20;
-                this.speedX = (Math.random() - 0.5) * 1.5;
-                this.speedY = (Math.random() - 0.5) * 1.5;
+                this.size = Math.random() * 20 + 10;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
                 this.points = [];
-                
-                // Generar forma irregular
-                const vertices = 8 + Math.floor(Math.random() * 5);
+                const vertices = 7 + Math.floor(Math.random() * 5);
                 for (let i = 0; i < vertices; i++) {
                     const angle = (i / vertices) * Math.PI * 2;
                     const dist = this.size * (0.6 + Math.random() * 0.4);
-                    this.points.push({
-                        x: Math.cos(angle) * dist,
-                        y: Math.sin(angle) * dist
-                    });
+                    this.points.push({x: Math.cos(angle) * dist, y: Math.sin(angle) * dist});
                 }
             }
-
             draw() {
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(this.x + this.points[0].x, this.y + this.points[0].y);
-                
                 for (let i = 1; i < this.points.length; i++) {
                     ctx.lineTo(this.x + this.points[i].x, this.y + this.points[i].y);
                 }
-                
                 ctx.closePath();
                 ctx.stroke();
             }
-
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-
-                // Teletransporte en los bordes (Screen Wrap)
-                if (this.x > canvas.width) this.x = 0;
-                if (this.x < 0) this.x = canvas.width;
-                if (this.y > canvas.height) this.y = 0;
-                if (this.y < 0) this.y = canvas.height;
-            }
-        }
-
-        function init() {
-            for (let i = 0; i < 12; i++) {
-                asteroids.push(new Asteroid());
-            }
-        }
-
-        function animate() {
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            asteroids.forEach(asteroid => {
-                asteroid.update();
-                asteroid.draw();
-            });
-
-            requestAnimationFrame(animate);
-        }
-
-        init();
-        animate();
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-    </script>
-</body>
-</html>
