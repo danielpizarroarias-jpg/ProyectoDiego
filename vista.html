@@ -77,8 +77,8 @@
     <div class="menu-container">
         <h1>ASTEROIDS</h1>
         <ul class="menu-options">
-            <li class="option selected" data-action="local">LOCAL</li>
-            <li class="option" data-action="online">ONLINE</li>
+            <li class="option selected" data-action="vistajuegolocal.html">LOCAL</li>
+            <li class="option" data-action="juegolocal.html">ONLINE / PROGRESIVO</li>
             <li class="option" data-action="salir">SALIR</li>
         </ul>
     </div>
@@ -114,6 +114,16 @@
                     this.points.push({x: Math.cos(angle) * dist, y: Math.sin(angle) * dist});
                 }
             }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                // Reposicionar si salen de la pantalla
+                if (this.x < -this.size) this.x = canvas.width + this.size;
+                else if (this.x > canvas.width + this.size) this.x = -this.size;
+                if (this.y < -this.size) this.y = canvas.height + this.size;
+                else if (this.y > canvas.height + this.size) this.y = -this.size;
+            }
             draw() {
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
                 ctx.lineWidth = 1;
@@ -125,3 +135,71 @@
                 ctx.closePath();
                 ctx.stroke();
             }
+        }
+
+        // Crear asteroides del fondo
+        for (let i = 0; i < 25; i++) {
+            asteroids.push(new BgAsteroid());
+        }
+
+        // Bucle de animación del canvas
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            asteroids.forEach(a => {
+                a.update();
+                a.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- LÓGICA DE NAVEGACIÓN DEL MENÚ ---
+        const options = document.querySelectorAll('.option');
+        let selectedIndex = 0;
+
+        function updateSelection() {
+            options.forEach((opt, index) => {
+                if (index === selectedIndex) {
+                    opt.classList.add('selected');
+                } else {
+                    opt.classList.remove('selected');
+                }
+            });
+        }
+
+        function executeAction() {
+            const action = options[selectedIndex].getAttribute('data-action');
+            if (action === 'salir') {
+                alert("Has seleccionado salir. (En un navegador web por seguridad no se puede cerrar la pestaña directamente mediante script si no fue abierta por este).");
+            } else {
+                // Redirigir a las otras vistas de juego
+                window.location.href = action;
+            }
+        }
+
+        // Navegación con teclado
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : options.length - 1;
+                updateSelection();
+            } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                selectedIndex = (selectedIndex < options.length - 1) ? selectedIndex + 1 : 0;
+                updateSelection();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                executeAction();
+            }
+        });
+
+        // Navegación con ratón
+        options.forEach((opt, index) => {
+            opt.addEventListener('mouseover', () => {
+                selectedIndex = index;
+                updateSelection();
+            });
+            opt.addEventListener('click', () => {
+                executeAction();
+            });
+        });
+    </script>
+</body>
+</html>
