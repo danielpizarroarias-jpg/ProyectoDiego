@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Asteroids - Online Lobby</title>
+    
+    <script>
+        if (window.location.protocol === "file:") {
+            window.location.href = "http://localhost:3000/vistajuegoonline.html";
+        }
+    </script>
+    
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; user-select: none; font-family: 'Courier New', monospace; color: white; }
         canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
@@ -66,40 +73,25 @@
     <div id="waiting-room-menu" class="menu-box hidden" style="border-color:#39ff14">
         <h2 id="waiting-room-name" style="color:#fff; margin-top:0; text-transform:uppercase;">SALA ESPACIAL</h2>
         <p>CÓDIGO DE INVITACIÓN:</p>
-        <h1 id="waiting-room-code" style="color:#39ff14; font-size: 50px; letter-spacing: 10px; margin: 10px 0;">----</h1>
+        
+        <h1 id="waiting-room-code" style="color:#39ff14; font-size: 50px; letter-spacing: 10px; margin: 10px 0; user-select: text; cursor: text;">----</h1>
+        
+        <button id="copy-btn" onclick="copyRoomCode()" style="width: 65%; margin-top: 0; margin-bottom: 20px; font-size: 14px; padding: 8px;">📋 COPIAR CÓDIGO</button>
         
         <p style="color:#aaa;">JUGADORES CONECTADOS: <span id="connected-count" style="color:#fff; font-weight:bold;">1</span></p>
         
-        <div id="players-list" style="margin-bottom: 20px; font-size: 20px;"></div>
+        <div id="players-list" style="margin-bottom: 20px; font-size: 24px; letter-spacing: 5px;"></div>
         
         <button onclick="startGameAction()" style="border-color: #00f2ff; color: #00f2ff;">¡EMPEZAR PARTIDA!</button>
         <button onclick="location.reload()" style="border-color: #ff0055; color: #ff0055;">SALIR</button>
     </div>
 
-    <div id="room-info" class="hidden">
-        <div id="display-room-name" style="font-size: 14px; color: #aaa;">SALA ESPACIAL</div>
-        CÓDIGO: <span id="display-room-code" style="color:#00f2ff; font-weight:bold; font-size: 24px;">----</span>
-    </div>
-
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas" class="hidden"></canvas>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    const socket = io(); 
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    window.addEventListener('resize', resize);
-    resize();
-
-    let myShip = { x: 0, y: 0, angle: 0, velX: 0, velY: 0 };
-    let otherPlayers = {}; 
-    let isPlaying = false;
-    let keys = {};
-
-    window.addEventListener('keydown', e => keys[e.code] = true);
-    window.addEventListener('keyup', e => keys[e.code] = false);
+    window.socket = io(); 
+    var socket = window.socket;
 
     // ==========================================
     // LÓGICA DE MENÚS Y LOBBY
@@ -122,22 +114,25 @@
     }
 
     function joinRoom() {
-        const code = document.getElementById('room-input').value;
+        const code = document.getElementById('room-input').value.trim().toUpperCase();
         if (code.length > 0) socket.emit('joinRoom', code);
     }
 
-    // Funciones para la Sala de Espera
+    function copyRoomCode() {
+        const code = document.getElementById('waiting-room-code').innerText;
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = document.getElementById('copy-btn');
+            btn.innerText = "¡COPIADO! ✔️";
+            setTimeout(() => { btn.innerText = "📋 COPIAR CÓDIGO"; }, 2000);
+        });
+    }
+
     function showWaitingRoom(code, name) {
         document.getElementById('main-menu').classList.add('hidden');
         document.getElementById('create-room-menu').classList.add('hidden');
         document.getElementById('waiting-room-menu').classList.remove('hidden');
-        
         document.getElementById('waiting-room-code').innerText = code;
         document.getElementById('waiting-room-name').innerText = name.toUpperCase();
-        
-        // Preparar la esquina para cuando empiece el juego
-        document.getElementById('display-room-code').innerText = code;
-        document.getElementById('display-room-name').innerText = name.toUpperCase();
     }
 
     socket.on('roomCreated', (code) => {
@@ -151,99 +146,34 @@
     
     socket.on('errorMsg', (msg) => alert(msg));
 
-    // El servidor nos avisa de los jugadores que hay (para actualizar el contador en la sala de espera)
     socket.on('updatePlayers', (serverPlayers) => {
-        otherPlayers = {};
-        let count = 0;
+        let count = Object.keys(serverPlayers).length;
         let listHTML = "";
-
         for (let id in serverPlayers) {
-            count++;
-            listHTML += `<span style="color:${serverPlayers[id].color}">● </span>`; // Puntito de color por jugador
-
-            if (id === socket.id) {
-                myShip.x = serverPlayers[id].x;
-                myShip.y = serverPlayers[id].y;
-                myShip.color = serverPlayers[id].color;
-            } else {
-                otherPlayers[id] = serverPlayers[id];
-            }
+            listHTML += `<span style="color:${serverPlayers[id].color}">● </span>`; 
         }
-        
-        // Actualizamos los numeritos de la sala de espera
         document.getElementById('connected-count').innerText = count;
         document.getElementById('players-list').innerHTML = listHTML;
     });
 
-    // Acción para empezar a jugar
     function startGameAction() {
         socket.emit('startGame');
     }
 
-    // El servidor nos da luz verde para empezar a jugar a todos a la vez
+    // ==========================================
+    // CAMBIO AL ARCHIVO DEL JUEGO
+    // ==========================================
     socket.on('gameStarted', () => {
-        document.getElementById('waiting-room-menu').classList.add('hidden'); // Ocultar sala de espera
-        document.getElementById('room-info').classList.remove('hidden'); // Mostrar esquina
-        isPlaying = true;
-        gameLoop();
+        // 1. Obtenemos el código de la sala actual
+        const code = document.getElementById('waiting-room-code').innerText;
+        
+        // 2. Lo guardamos en la "mochila" (sessionStorage)
+        sessionStorage.setItem("codigoSala", code);
+        
+        // 3. Saltamos al archivo juegoonline.html
+        window.location.href = "juegoonline.html";
     });
 
-    socket.on('playerMoved', (data) => {
-        otherPlayers[data.id] = data.player;
-    });
-
-    // ==========================================
-    // BUCLE DEL JUEGO (FÍSICAS Y DIBUJO)
-    // ==========================================
-
-    function gameLoop() {
-        if (!isPlaying) return;
-        
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (keys['KeyA'] || keys['ArrowLeft']) myShip.angle -= 0.08;
-        if (keys['KeyD'] || keys['ArrowRight']) myShip.angle += 0.08;
-        if (keys['KeyW'] || keys['ArrowUp']) {
-            myShip.velX += Math.cos(myShip.angle) * 0.2;
-            myShip.velY += Math.sin(myShip.angle) * 0.2;
-        }
-
-        myShip.velX *= 0.98; myShip.velY *= 0.98;
-        myShip.x += myShip.velX; myShip.y += myShip.velY;
-        
-        if (myShip.x < 0) myShip.x = canvas.width; else if (myShip.x > canvas.width) myShip.x = 0;
-        if (myShip.y < 0) myShip.y = canvas.height; else if (myShip.y > canvas.height) myShip.y = 0;
-
-        socket.emit('playerMovement', { x: myShip.x, y: myShip.y, angle: myShip.angle });
-
-        drawShip(myShip.x, myShip.y, myShip.angle, myShip.color, (keys['KeyW'] || keys['ArrowUp']));
-
-        for (let id in otherPlayers) {
-            let p = otherPlayers[id];
-            drawShip(p.x, p.y, p.angle, p.color, false);
-        }
-
-        requestAnimationFrame(gameLoop);
-    }
-
-    function drawShip(x, y, angle, color, isThrusting) {
-        ctx.strokeStyle = color || '#fff'; 
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x + Math.cos(angle)*15, y + Math.sin(angle)*15);
-        ctx.lineTo(x + Math.cos(angle+2.4)*12, y + Math.sin(angle+2.4)*12);
-        ctx.lineTo(x + Math.cos(angle-2.4)*12, y + Math.sin(angle-2.4)*12);
-        ctx.closePath(); ctx.stroke();
-
-        if (isThrusting) {
-            ctx.strokeStyle = '#ffaa00';
-            ctx.beginPath();
-            ctx.moveTo(x + Math.cos(angle+3.14)*10, y + Math.sin(angle+3.14)*10);
-            ctx.lineTo(x + Math.cos(angle+3.14)*20, y + Math.sin(angle+3.14)*20);
-            ctx.stroke();
-        }
-    }
 </script>
 </body>
 </html>
