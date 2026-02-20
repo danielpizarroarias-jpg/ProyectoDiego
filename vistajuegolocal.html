@@ -108,7 +108,7 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     
-    let ship, asteroids, lasers, enemyLasers, boss, score, level, nextGoal, money, upgradeCost, upgradeCount, gameState, keys, mouse;
+        let ship, asteroids, lasers, enemyLasers, boss, drones, score, level, nextGoal, money, upgradeCost, upgradeCount, gameState, keys, mouse;
     let fireDelay, lastFire = 0, thrustPower, projectiles;
 
     function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
@@ -147,7 +147,7 @@
         gameState = 'PLAYING';
         score = 0; level = 1; nextGoal = 1000; money = 0; upgradeCost = 50; upgradeCount = 0;
         fireDelay = 400; thrustPower = 0.2; projectiles = 1;
-        asteroids = []; lasers = []; enemyLasers = []; boss = null;
+        asteroids = []; lasers = []; enemyLasers = []; drones = []; boss = null;
         ship = { x: canvas.width / 2, y: canvas.height / 2, r: 12, angle: 0, velX: 0, velY: 0, blink: 120, lives: 3 };
         spawnAsteroids(5);
         document.getElementById('start-menu').classList.add('hidden');
@@ -233,6 +233,7 @@
         // Limpiar la pantalla de proyectiles
         lasers = [];
         enemyLasers = [];
+        drones = [];
         
         // Re-generar los enemigos del nivel actual
         if (level % 5 === 0) {
@@ -300,7 +301,16 @@
             boss.x += (3 + level/3) * boss.dir;
             if (boss.x > canvas.width - 60 || boss.x < 60) boss.dir *= -1;
             ctx.strokeStyle = '#f00'; ctx.lineWidth = 4;
-            ctx.strokeRect(boss.x - 40, boss.y - 20, 80, 40);
+            ctx.beginPath();
+            ctx.moveTo(boss.x, boss.y + 50); // Punta
+            ctx.lineTo(boss.x - 70, boss.y - 20); 
+            ctx.lineTo(boss.x + 70, boss.y - 20);
+            ctx.closePath(); ctx.stroke();
+            ctx.strokeRect(boss.x - 20, boss.y - 35, 40, 15); // Puente
+            ctx.beginPath();
+            ctx.moveTo(boss.x - 50, boss.y + 10); ctx.lineTo(boss.x - 30, boss.y - 10);
+            ctx.moveTo(boss.x + 50, boss.y + 10); ctx.lineTo(boss.x + 30, boss.y - 10);
+            ctx.stroke();
             if (Date.now() - boss.lastShot > 1000) {
                 enemyLasers.push({ x: boss.x, y: boss.y + 20, vy: 7 });
                 boss.lastShot = Date.now();
@@ -325,7 +335,7 @@
             if (boss && Math.hypot(l.x - boss.x, l.y - boss.y) < 45) {
                 boss.hp--; lasers.splice(i, 1);
                 if (boss.hp <= 0) {
-                    boss = null; enemyLasers = [];
+                    boss = null; enemyLasers = []; drones = [];
                     document.getElementById('boss-ui').classList.add('hidden');
                     document.getElementById('boss-reward-menu').classList.remove('hidden');
                     gameState = 'REWARD';
