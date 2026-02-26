@@ -2,131 +2,159 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asteroids Online - Neon Evolution</title>
+    <title>Asteroids - Online Lobby</title>
+    
+    <script>
+        // Tu redirección original
+        if (window.location.protocol === "file:") {
+            window.location.href = "http://localhost:3000/vistajuegoonline.html";
+        }
+    </script>
+    
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: black;
-            color: #00ecff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; user-select: none; font-family: 'Courier New', monospace; color: white; text-align: center; }
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+        .hidden { display: none !important; }
+        
+        /* Estilos de tus cajas de menú */
+        .menu-box { 
+            position: relative;
+            z-index: 10;
+            margin: 100px auto; 
+            padding: 20px; 
+            border: 2px solid white; 
+            width: 500px; 
+            background: #111; 
         }
-        canvas {
-            display: block;
-            box-shadow: 0 0 20px #00ecff;
-            border: 2px solid #00ecff;
+
+        button { 
+            background: #000; 
+            color: white; 
+            border: 1px solid white; 
+            padding: 10px 20px; 
+            margin: 10px; 
+            cursor: pointer; 
+            font-family: 'Courier New', monospace; 
+            font-weight: bold; 
+            font-size: 16px;
         }
-        #ui-layer {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none;
+        button:hover { background: #333; }
+        
+        input { 
+            padding: 10px; 
+            font-family: 'Courier New', monospace; 
+            text-align: center; 
+            font-size: 18px; 
+            text-transform: uppercase; 
+            background: #000;
+            color: #fff;
+            border: 1px solid #fff;
         }
     </style>
 </head>
 <body>
-    <div id="ui-layer">
-        <h2 id="status">CONECTANDO AL SERVIDOR...</h2>
+
+    <div id="main-menu" class="menu-box">
+        <h2>ASTEROIDS MULTIJUGADOR</h2>
+        <button onclick="document.getElementById('main-menu').classList.add('hidden'); document.getElementById('create-room-menu').classList.remove('hidden');">CREAR SALA</button>
+        <br><br>
+        <input type="text" id="room-input" placeholder="CÓDIGO" maxlength="4">
+        <button onclick="joinRoom()">UNIRSE A SALA</button>
     </div>
-    <canvas id="gameCanvas"></canvas>
+
+    <div id="create-room-menu" class="menu-box hidden">
+        <h2>CONFIGURAR SALA</h2>
+        <button onclick="socket.emit('createRoom', 'Sala de Mando')">CONFIRMAR Y CREAR</button>
+        <button onclick="location.reload()">VOLVER</button>
+    </div>
+
+    <div id="waiting-room-menu" class="menu-box hidden" style="border-color:#39ff14">
+        <h2 id="waiting-room-name" style="color:#fff; margin-top:0; text-transform:uppercase;">SALA ESPACIAL</h2>
+        <p>CÓDIGO DE INVITACIÓN:</p>
+        
+        <h1 id="waiting-room-code" style="color:#39ff14; font-size: 50px; letter-spacing: 10px; margin: 10px 0; user-select: text; cursor: text;">----</h1>
+        
+        <button id="copy-btn" onclick="copyRoomCode()" style="width: 65%; margin-top: 0; margin-bottom: 20px; font-size: 14px; padding: 8px;">📋 COPIAR CÓDIGO</button>
+        
+        <p style="color:#aaa;">JUGADORES CONECTADOS: <span id="connected-count" style="color:#fff; font-weight:bold;">1</span></p>
+        
+        <div id="players-list" style="margin-bottom: 20px; font-size: 24px; letter-spacing: 5px;"></div>
+        
+        <button onclick="startGameAction()" style="border-color: #00f2ff; color: #00f2ff;">¡EMPEZAR PARTIDA!</button>
+        <button onclick="location.reload()" style="border-color: #ff0055; color: #ff0055;">SALIR</button>
+    </div>
+
+    <canvas id="canvas" class="hidden"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = window.innerWidth * 0.9;
-        canvas.height = window.innerHeight * 0.8;
+        window.socket = io(); 
+        var socket = window.socket;
 
-        const statusText = document.getElementById("status");
-        const socket = io(); 
+        // ==========================================
+        // LÓGICA DE MENÚS Y LOBBY
+        // ==========================================
 
-        let otherPlayers = {};
-        let myShip = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            rotation: 0,
-            color: "#00ecff"
-        };
-
-        socket.on('connect', () => {
-            statusText.innerText = "SALA ONLINE ACTIVA";
-            statusText.style.color = "#00ff41";
-        });
-
-        socket.on('currentPlayers', (players) => {
-            otherPlayers = players;
-        });
-
-        socket.on('newPlayer', (playerInfo) => {
-            otherPlayers[playerInfo.id] = playerInfo;
-        });
-
-        socket.on('playerMoved', (playerInfo) => {
-            if (otherPlayers[playerInfo.id]) {
-                otherPlayers[playerInfo.id].x = playerInfo.x;
-                otherPlayers[playerInfo.id].y = playerInfo.y;
-                otherPlayers[playerInfo.id].rotation = playerInfo.rotation;
-            }
-        });
-
-        socket.on('playerDisconnected', (id) => {
-            delete otherPlayers[id];
-        });
-
-        function drawShip(x, y, rotation, color) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(rotation);
-            ctx.strokeStyle = color;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = color;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(15, 0);
-            ctx.lineTo(-10, 10);
-            ctx.lineTo(-10, -10);
-            ctx.closePath();
-            ctx.stroke();
-            ctx.restore();
+        function joinRoom() {
+            const code = document.getElementById('room-input').value.trim().toUpperCase();
+            if (code.length > 0) socket.emit('joinRoom', code);
         }
 
-        function gameLoop() {
-            ctx.fillStyle = "black";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            for (let id in otherPlayers) {
-                if (id !== socket.id) {
-                    const p = otherPlayers[id];
-                    drawShip(p.x, p.y, p.rotation, "#ff00ea");
-                }
-            }
-
-            drawShip(myShip.x, myShip.y, myShip.rotation, myShip.color);
-            requestAnimationFrame(gameLoop);
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === "ArrowLeft") myShip.rotation -= 0.1;
-            if (e.key === "ArrowRight") myShip.rotation += 0.1;
-            if (e.key === "ArrowUp") {
-                myShip.x += Math.cos(myShip.rotation) * 5;
-                myShip.y += Math.sin(myShip.rotation) * 5;
-            }
-            
-            socket.emit('playerMovement', {
-                x: myShip.x,
-                y: myShip.y,
-                rotation: myShip.rotation
+        function copyRoomCode() {
+            const code = document.getElementById('waiting-room-code').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.getElementById('copy-btn');
+                btn.innerText = "¡COPIADO! ✔️";
+                setTimeout(() => { btn.innerText = "📋 COPIAR CÓDIGO"; }, 2000);
             });
+        }
+
+        function showWaitingRoom(code, name) {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('create-room-menu').classList.add('hidden');
+            document.getElementById('waiting-room-menu').classList.remove('hidden');
+            document.getElementById('waiting-room-code').innerText = code;
+            document.getElementById('waiting-room-name').innerText = name.toUpperCase();
+        }
+
+        socket.on('roomCreated', (code) => {
+            showWaitingRoom(code, "Tu Sala");
         });
 
-        gameLoop();
+        socket.on('roomJoined', (code, name) => {
+            showWaitingRoom(code, name);
+        });
+        
+        socket.on('errorMsg', (msg) => alert(msg));
+
+        socket.on('updatePlayers', (serverPlayers) => {
+            let count = Object.keys(serverPlayers).length;
+            let listHTML = "";
+            for (let id in serverPlayers) {
+                listHTML += `<span style="color:${serverPlayers[id].color}">● </span>`; 
+            }
+            document.getElementById('connected-count').innerText = count;
+            document.getElementById('players-list').innerHTML = listHTML;
+        });
+
+        function startGameAction() {
+            socket.emit('startGame');
+        }
+
+        // ==========================================
+        // CAMBIO AL ARCHIVO DEL JUEGO
+        // ==========================================
+        socket.on('gameStarted', () => {
+            // 1. Obtenemos el código de la sala actual
+            const code = document.getElementById('waiting-room-code').innerText;
+            
+            // 2. Lo guardamos en la "mochila" (sessionStorage)
+            sessionStorage.setItem("codigoSala", code);
+            
+            // 3. Saltamos al archivo juegoonline.html
+            window.location.href = "juegoonline.html";
+        });
+
     </script>
 </body>
 </html>
