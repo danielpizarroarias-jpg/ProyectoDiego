@@ -1,7 +1,7 @@
 {
-  "name": "asteroids-neon-evolution",
+  "name": "proyectodiego",
   "version": "1.0.0",
-  "description": "Asteroids Neon Evolution Online",
+  "description": "Asteroids Neon Evolution",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
