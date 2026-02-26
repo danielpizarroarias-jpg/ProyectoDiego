@@ -5,12 +5,10 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-// Habilitar CORS para evitar bloqueos de seguridad
 app.use(cors());
-
 const server = http.createServer(app);
 
-// Configuración de Socket.io con permisos abiertos
+// Configuración de Socket.io para la nube
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -18,19 +16,21 @@ const io = new Server(server, {
     }
 });
 
-// Servir archivos estáticos
+// Servir archivos estáticos de la carpeta
 app.use(express.static(__dirname));
 
+// Ruta principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'vista.html'));
 });
 
-// --- Lógica Multijugador ---
+// Lógica de jugadores
 let players = {};
 
 io.on('connection', (socket) => {
-    console.log('Jugador conectado ID:', socket.id);
+    console.log('Jugador conectado:', socket.id);
 
+    // Crear estado inicial
     players[socket.id] = {
         x: Math.random() * 800,
         y: Math.random() * 600,
@@ -38,9 +38,12 @@ io.on('connection', (socket) => {
         id: socket.id
     };
 
+    // Enviar lista de jugadores al nuevo
     socket.emit('currentPlayers', players);
+    // Avisar a los demás
     socket.broadcast.emit('newPlayer', players[socket.id]);
 
+    // Recibir y reenviar movimiento
     socket.on('playerMovement', (movementData) => {
         if (players[socket.id]) {
             players[socket.id].x = movementData.x;
@@ -57,8 +60,8 @@ io.on('connection', (socket) => {
     });
 });
 
-// El puerto debe ser dinámico para Render
+// IMPORTANTE: process.env.PORT para Render
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor escuchando en puerto ${PORT}`);
+    console.log(`Servidor activo en puerto ${PORT}`);
 });

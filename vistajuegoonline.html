@@ -45,10 +45,8 @@
 
         const statusText = document.getElementById("status");
 
-        // CONEXIÓN CORREGIDA PARA RENDER
-        const socket = io("/", {
-            transports: ['websocket', 'polling']
-        });
+        // CONEXIÓN AUTOMÁTICA (Busca el servidor donde está alojado el HTML)
+        const socket = io();
 
         let otherPlayers = {};
         let myShip = {
@@ -59,15 +57,8 @@
         };
 
         socket.on('connect', () => {
-            console.log("Conectado con ID:", socket.id);
             statusText.innerText = "SALA ONLINE ACTIVA";
             statusText.style.color = "#00ff41";
-        });
-
-        socket.on('connect_error', (err) => {
-            console.log("Error detallado de conexión:", err);
-            statusText.innerText = "ERROR DE RED";
-            statusText.style.color = "red";
         });
 
         socket.on('currentPlayers', (players) => {
@@ -111,6 +102,7 @@
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Dibujar otros
             for (let id in otherPlayers) {
                 if (id !== socket.id) {
                     const p = otherPlayers[id];
@@ -118,6 +110,7 @@
                 }
             }
 
+            // Dibujar mi nave
             drawShip(myShip.x, myShip.y, myShip.rotation, myShip.color);
             requestAnimationFrame(gameLoop);
         }
