@@ -45,9 +45,8 @@
 
         const statusText = document.getElementById("status");
 
-        // CONFIGURACIÓN DE CONEXIÓN CORREGIDA
-        // Forzamos que use la URL actual del navegador para conectar
-        const socket = io(window.location.origin, {
+        // CONEXIÓN CORREGIDA PARA RENDER
+        const socket = io("/", {
             transports: ['websocket', 'polling']
         });
 
@@ -60,14 +59,14 @@
         };
 
         socket.on('connect', () => {
-            console.log("¡Conectado exitosamente!");
+            console.log("Conectado con ID:", socket.id);
             statusText.innerText = "SALA ONLINE ACTIVA";
             statusText.style.color = "#00ff41";
         });
 
-        socket.on('connect_error', (error) => {
-            console.error("Error de conexión:", error);
-            statusText.innerText = "ERROR DE CONEXIÓN";
+        socket.on('connect_error', (err) => {
+            console.log("Error detallado de conexión:", err);
+            statusText.innerText = "ERROR DE RED";
             statusText.style.color = "red";
         });
 
