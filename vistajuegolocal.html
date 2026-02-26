@@ -73,7 +73,7 @@
     <div id="game-over-menu" class="hidden">
         <h1 style="color:#ff0000; margin-top:0">FIN DEL JUEGO</h1>
         <p>Tu nave ha sido destruida.</p>
-        <button onclick="restartLevel()">REINICIAR NIVEL</button>
+        <button onclick="restartGame()">REINICIAR TODO</button>
         <button onclick="window.location.href='vista.html'" style="border-color: #ff0055; color: #ff0055;">VOLVER AL MENÚ</button>
     </div>
 
@@ -117,7 +117,11 @@
 
     keys = {}; mouse = { x: 0, y: 0 };
     window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-    window.addEventListener('mousedown', e => { if(e.button === 0 && gameState === 'PLAYING') shoot(); });
+    // Soporte para mantener clic: isShooting se controla con mousedown/mouseup
+    let isShooting = false;
+    window.addEventListener('mousedown', e => { if (e.button === 0) { isShooting = true; if (gameState === 'PLAYING') shoot(); } });
+    window.addEventListener('mouseup', e => { if (e.button === 0) isShooting = false; });
+    window.addEventListener('mouseleave', () => isShooting = false);
     window.addEventListener('keydown', e => { 
         if(e.code === 'Escape') togglePause();
         keys[e.code] = true; 
@@ -182,7 +186,18 @@
 
         if (level % 5 === 0) {
             asteroids = [];
-            boss = { x: canvas.width / 2, y: 100, hp: 30 + (level * 5), maxHp: 30 + (level * 5), dir: 1, lastShot: Date.now() - 1200 };
+            boss = { 
+                x: canvas.width / 2, y: 100, 
+                hp: 30 + (level * 5), 
+                maxHp: 30 + (level * 5), 
+                dir: 1, 
+                lastShot: Date.now() - 2500,
+                shotInterval: 2500,
+                homingEnabled: false,
+                targetX: canvas.width / 2,
+                lastMoveChange: Date.now(),
+                moveChangeTime: 1000
+            };
             document.getElementById('boss-ui').classList.remove('hidden');
             gameState = 'PLAYING';
             run();
@@ -220,6 +235,7 @@
     }
 
     function restartLevel() {
+        // existing behavior kept if ever used externally
         document.getElementById('game-over-menu').classList.add('hidden');
         
         // Restaurar las vidas y la posición de la nave
@@ -238,7 +254,18 @@
         // Re-generar los enemigos del nivel actual
         if (level % 5 === 0) {
             asteroids = [];
-            boss = { x: canvas.width / 2, y: 100, hp: 30 + (level * 5), maxHp: 30 + (level * 5), dir: 1, lastShot: Date.now() - 1200 };
+            boss = { 
+                x: canvas.width / 2, y: 100, 
+                hp: 30 + (level * 5), 
+                maxHp: 30 + (level * 5), 
+                dir: 1, 
+                lastShot: Date.now() - 2500,
+                shotInterval: 2500,
+                homingEnabled: false,
+                targetX: canvas.width / 2,
+                lastMoveChange: Date.now(),
+                moveChangeTime: 1000
+            };
             document.getElementById('boss-ui').classList.remove('hidden');
         } else {
             asteroids = [];
@@ -252,6 +279,24 @@
         run(); // Volver a arrancar el bucle del juego
     }
 
+    // reinicia completamente el juego como si recargas la página
+    function restartGame() {
+        // esconder el menú para evitar desbordes
+        document.getElementById('game-over-menu').classList.add('hidden');
+        // reiniciar variables globales y estados
+        ship = { x: canvas.width / 2, y: canvas.height / 2, r: 12, angle: 0, velX: 0, velY: 0, blink: 120, lives: 3 };
+        score = 0; level = 1; nextGoal = 1000; money = 0; upgradeCost = 50; upgradeCount = 0;
+        fireDelay = 400; thrustPower = 0.2; projectiles = 1;
+        asteroids = []; lasers = []; enemyLasers = []; drones = []; boss = null;
+        spawnAsteroids(5);
+        document.getElementById('start-menu').classList.add('hidden');
+        document.getElementById('money-panel').classList.remove('hidden');
+        document.getElementById('ui-left').classList.remove('hidden');
+        updateUI();
+        gameState = 'PLAYING';
+        run();
+    }
+
     function updateUI() {
         document.getElementById('money-count').innerText = "● " + money;
         document.getElementById('lvl-txt').innerText = level;
@@ -263,6 +308,9 @@
 
     function run() {
         if (gameState !== 'PLAYING') return;
+
+        // Disparo continuo si el jugador mantiene el botón
+        if (typeof isShooting !== 'undefined' && isShooting) shoot();
 
         if (money >= upgradeCost && !boss) {
             gameState = 'SHOPPING';
@@ -298,8 +346,30 @@
 
         // Boss
         if (boss) {
-            boss.x += (3 + level/3) * boss.dir;
-            if (boss.x > canvas.width - 60 || boss.x < 60) boss.dir *= -1;
+            // Randomized horizontal movement toward a changing target
+            if (Date.now() - boss.lastMoveChange > boss.moveChangeTime) {
+                boss.targetX = 60 + Math.random() * (canvas.width - 120);
+                boss.moveChangeTime = 800 + Math.random() * 1200;
+                boss.lastMoveChange = Date.now();
+            }
+            let dx = boss.targetX - boss.x;
+            let moveSpeed = 2 + level / 4;
+            boss.x += Math.sign(dx) * Math.min(Math.abs(dx), moveSpeed);
+            // slight vertical bobbing for more life
+            boss.y = 90 + Math.sin(Date.now() / 500) * 12;
+
+            // If boss drops below 30% hp, enable homing missiles and increase fire rate
+            if (!boss.homingEnabled && boss.hp <= boss.maxHp * 0.3) {
+                boss.homingEnabled = true;
+                boss.shotInterval = Math.max(300, boss.shotInterval * 0.6);
+            }
+
+            // Boss collision with the player's ship
+            if (Math.hypot(ship.x - boss.x, ship.y - boss.y) < 50 && ship.blink === 0) {
+                ship.lives--; ship.blink = 120; updateUI();
+                if (ship.lives <= 0) showGameOver();
+            }
+
             ctx.strokeStyle = '#f00'; ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.moveTo(boss.x, boss.y + 50); // Punta
@@ -311,22 +381,67 @@
             ctx.moveTo(boss.x - 50, boss.y + 10); ctx.lineTo(boss.x - 30, boss.y - 10);
             ctx.moveTo(boss.x + 50, boss.y + 10); ctx.lineTo(boss.x + 30, boss.y - 10);
             ctx.stroke();
-            if (Date.now() - boss.lastShot > 1000) {
-                enemyLasers.push({ x: boss.x, y: boss.y + 20, vy: 7 });
+
+            // Shooting logic: faster when low HP; homing missiles after threshold
+            if (Date.now() - boss.lastShot > boss.shotInterval) {
+                if (boss.homingEnabled) {
+                    // fire a homing missile aimed at the player (slower but larger)
+                    enemyLasers.push({ x: boss.x, y: boss.y + 20, vx: 0, vy: 0, speed: 2 + level * 0.15, homing: true, size: 10 });
+                    // From level 20 onwards, also fire normal lasers alongside homing missile
+                    let angle = Math.atan2(ship.y - boss.y, ship.x - boss.x);
+                    let speed = 4 + level * 0.1;
+                    if (level >= 50) {
+                        // Level 50+: fire two lasers with spread
+                        let spread = 0.3;
+                        enemyLasers.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle - spread) * speed, vy: Math.sin(angle - spread) * speed, size: 8 });
+                        enemyLasers.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle + spread) * speed, vy: Math.sin(angle + spread) * speed, size: 8 });
+                    } else if (level >= 20) {
+                        // Level 20-49: fire one laser
+                        enemyLasers.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: 8 });
+                    }
+                } else {
+                    // fire a single projectile aimed toward the player (slower and larger)
+                    let angle = Math.atan2(ship.y - boss.y, ship.x - boss.x);
+                    let speed = 4 + level * 0.1; // reduced speed
+                    enemyLasers.push({ x: boss.x, y: boss.y + 20, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: 8 });
+                }
                 boss.lastShot = Date.now();
             }
+
             document.getElementById('boss-hp-fill').style.width = (boss.hp / boss.maxHp * 100) + "%";
         }
 
         // Lasers
         for (let i = enemyLasers.length - 1; i >= 0; i--) {
-            let el = enemyLasers[i]; el.y += el.vy;
-            ctx.fillStyle = '#f00'; ctx.fillRect(el.x - 2, el.y, 4, 15);
-            if (Math.hypot(ship.x - el.x, ship.y - el.y) < 20 && ship.blink === 0) {
-                ship.lives--; ship.blink = 120; enemyLasers.splice(i, 1); updateUI();
-                if(ship.lives <= 0) showGameOver();
+            let el = enemyLasers[i];
+            if (el.homing) {
+                // Steer toward player each frame
+                let angle = Math.atan2(ship.y - el.y, ship.x - el.x);
+                el.vx = Math.cos(angle) * el.speed;
+                el.vy = Math.sin(angle) * el.speed;
+                el.x += el.vx; el.y += el.vy;
+                // draw larger homing missile
+                let hSize = el.size || 10;
+                ctx.fillStyle = '#ff8800'; ctx.beginPath(); ctx.arc(el.x, el.y, hSize, 0, Math.PI*2); ctx.fill();
+                if (Math.hypot(ship.x - el.x, ship.y - el.y) < (hSize + 18) && ship.blink === 0) {
+                    ship.lives--; ship.blink = 120; enemyLasers.splice(i, 1); updateUI();
+                    if (ship.lives <= 0) showGameOver();
+                    continue;
+                }
+            } else {
+                if (el.vx !== undefined) { el.x += el.vx; el.y += el.vy || 0; }
+                else if (el.vy !== undefined) { el.y += el.vy; }
+                else { el.y += 7; }
+                // draw larger non-homing projectile
+                let nSize = el.size || 8;
+                ctx.fillStyle = '#f00'; ctx.fillRect(el.x - nSize/2, el.y, nSize, nSize * 2.5);
+                if (Math.hypot(ship.x - el.x, ship.y - el.y) < (nSize + 18) && ship.blink === 0) {
+                    ship.lives--; ship.blink = 120; enemyLasers.splice(i, 1); updateUI();
+                    if(ship.lives <= 0) showGameOver();
+                    continue;
+                }
             }
-            if (el.y > canvas.height) enemyLasers.splice(i, 1);
+            if (el.y > canvas.height + 50 || el.x < -50 || el.x > canvas.width + 50 || el.y < -50) enemyLasers.splice(i, 1);
         }
 
         for (let i = lasers.length - 1; i >= 0; i--) {
@@ -342,7 +457,14 @@
                 }
                 continue;
             }
-            if (l.x < 0 || l.x > canvas.width || l.y < 0 || l.y > canvas.height) lasers.splice(i, 1);
+            // Colisión entre laser del jugador y misiles homing solamente
+            for (let j = enemyLasers.length - 1; j >= 0; j--) {
+                if (enemyLasers[j].homing && Math.hypot(l.x - enemyLasers[j].x, l.y - enemyLasers[j].y) < 12) {
+                    enemyLasers.splice(j, 1); lasers.splice(i, 1);
+                    break;
+                }
+            }
+            if (i < lasers.length && (l.x < 0 || l.x > canvas.width || l.y < 0 || l.y > canvas.height)) lasers.splice(i, 1);
         }
 
         // Asteroides
