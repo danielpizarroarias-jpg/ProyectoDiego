@@ -1,26 +1,12 @@
 {
-  "name": "proyectodiego",
+  "name": "asteroids-online",
   "version": "1.0.0",
-  "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/danielpizarroarias-jpg/ProyectoDiego.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/danielpizarroarias-jpg/ProyectoDiego/issues"
-  },
-  "homepage": "https://github.com/danielpizarroarias-jpg/ProyectoDiego#readme",
   "dependencies": {
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
   }
 }

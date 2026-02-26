@@ -2,178 +2,147 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asteroids - Online Lobby</title>
-    
-    <script>
-        if (window.location.protocol === "file:") {
-            window.location.href = "http://localhost:3000/vistajuegoonline.html";
-        }
-    </script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroids Online - Neon Evolution</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; user-select: none; font-family: 'Courier New', monospace; color: white; }
-        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        .menu-box { 
-            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9); z-index: 150; border: 4px solid #fff; 
-            width: 400px; padding: 40px; text-align: center; 
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+            color: #00ecff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
-
-        input, select {
-            background: #000; color: #fff; border: 2px solid #fff; padding: 12px;
-            font-size: 18px; text-align: center; width: 80%; margin-top: 10px;
-            text-transform: uppercase; font-family: 'Courier New', monospace;
+        canvas {
+            display: block;
+            box-shadow: 0 0 20px #00ecff;
+            border: 2px solid #00ecff;
         }
-
-        button {
-            background: #000; color: #fff; border: 2px solid #fff; padding: 12px;
-            font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 15px; 
-            width: 100%; font-family: 'Courier New', monospace; transition: 0.2s;
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
         }
-        button:hover { background: #fff; color: #000; }
-        
-        #room-info {
-            position: absolute; top: 20px; right: 20px; z-index: 10;
-            border: 2px solid #00f2ff; padding: 10px; background: rgba(0,0,0,0.8);
-            text-align: right;
-        }
-
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-
-    <div id="main-menu" class="menu-box">
-        <h1 style="margin-top:0">MULTIJUGADOR</h1>
-        <button onclick="showCreateRoomMenu()">CREAR SALA NUEVA</button>
-        <div style="margin: 30px 0; border-top: 1px solid #555;"></div>
-        <input type="text" id="room-input" placeholder="CÓDIGO DE SALA" maxlength="4">
-        <button onclick="joinRoom()" style="border-color: #39ff14; color: #39ff14;">UNIRSE A SALA</button>
-        <button onclick="window.location.href='vista.html'" style="border-color: #ff0055; color: #ff0055;">VOLVER AL MENÚ</button>
+    <div id="ui-layer">
+        <h2 id="status">CONECTANDO AL SERVIDOR...</h2>
     </div>
+    <canvas id="gameCanvas"></canvas>
 
-    <div id="create-room-menu" class="menu-box hidden" style="border-color:#00f2ff">
-        <h2 style="color:#00f2ff; margin-top:0">CONFIGURAR SALA</h2>
-        <input type="text" id="room-name-input" placeholder="NOMBRE DE LA PARTIDA" maxlength="15">
-        
-        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; padding: 0 10%;">
-            <label for="room-max-players" style="font-size: 16px;">JUGADORES:</label>
-            <select id="room-max-players" style="width: 50%; margin-top: 0;">
-                <option value="2">2 Máx</option>
-                <option value="3">3 Máx</option>
-                <option value="4">4 Máx</option>
-            </select>
-        </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth * 0.9;
+        canvas.height = window.innerHeight * 0.8;
 
-        <button onclick="confirmCreateRoom()" style="border-color: #00f2ff; color: #00f2ff;">CONFIRMAR Y CREAR</button>
-        <button onclick="cancelCreateRoom()">CANCELAR</button>
-    </div>
+        const statusText = document.getElementById("status");
 
-    <div id="waiting-room-menu" class="menu-box hidden" style="border-color:#39ff14">
-        <h2 id="waiting-room-name" style="color:#fff; margin-top:0; text-transform:uppercase;">SALA ESPACIAL</h2>
-        <p>CÓDIGO DE INVITACIÓN:</p>
-        
-        <h1 id="waiting-room-code" style="color:#39ff14; font-size: 50px; letter-spacing: 10px; margin: 10px 0; user-select: text; cursor: text;">----</h1>
-        
-        <button id="copy-btn" onclick="copyRoomCode()" style="width: 65%; margin-top: 0; margin-bottom: 20px; font-size: 14px; padding: 8px;">📋 COPIAR CÓDIGO</button>
-        
-        <p style="color:#aaa;">JUGADORES CONECTADOS: <span id="connected-count" style="color:#fff; font-weight:bold;">1</span></p>
-        
-        <div id="players-list" style="margin-bottom: 20px; font-size: 24px; letter-spacing: 5px;"></div>
-        
-        <button onclick="startGameAction()" style="border-color: #00f2ff; color: #00f2ff;">¡EMPEZAR PARTIDA!</button>
-        <button onclick="location.reload()" style="border-color: #ff0055; color: #ff0055;">SALIR</button>
-    </div>
-
-    <canvas id="canvas" class="hidden"></canvas>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    window.socket = io(); 
-    var socket = window.socket;
-
-    // ==========================================
-    // LÓGICA DE MENÚS Y LOBBY
-    // ==========================================
-
-    function showCreateRoomMenu() {
-        document.getElementById('main-menu').classList.add('hidden');
-        document.getElementById('create-room-menu').classList.remove('hidden');
-    }
-
-    function cancelCreateRoom() {
-        document.getElementById('create-room-menu').classList.add('hidden');
-        document.getElementById('main-menu').classList.remove('hidden');
-    }
-
-    function confirmCreateRoom() {
-        const roomName = document.getElementById('room-name-input').value.trim() || "Sala Espacial";
-        const maxPlayers = document.getElementById('room-max-players').value;
-        socket.emit('createRoom', { name: roomName, maxPlayers: parseInt(maxPlayers) });
-    }
-
-    function joinRoom() {
-        const code = document.getElementById('room-input').value.trim().toUpperCase();
-        if (code.length > 0) socket.emit('joinRoom', code);
-    }
-
-    function copyRoomCode() {
-        const code = document.getElementById('waiting-room-code').innerText;
-        navigator.clipboard.writeText(code).then(() => {
-            const btn = document.getElementById('copy-btn');
-            btn.innerText = "¡COPIADO! ✔️";
-            setTimeout(() => { btn.innerText = "📋 COPIAR CÓDIGO"; }, 2000);
+        // CONFIGURACIÓN DE CONEXIÓN CORREGIDA
+        // Forzamos que use la URL actual del navegador para conectar
+        const socket = io(window.location.origin, {
+            transports: ['websocket', 'polling']
         });
-    }
 
-    function showWaitingRoom(code, name) {
-        document.getElementById('main-menu').classList.add('hidden');
-        document.getElementById('create-room-menu').classList.add('hidden');
-        document.getElementById('waiting-room-menu').classList.remove('hidden');
-        document.getElementById('waiting-room-code').innerText = code;
-        document.getElementById('waiting-room-name').innerText = name.toUpperCase();
-    }
+        let otherPlayers = {};
+        let myShip = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            rotation: 0,
+            color: "#00ecff"
+        };
 
-    socket.on('roomCreated', (code) => {
-        const roomName = document.getElementById('room-name-input').value.trim() || "Sala Espacial";
-        showWaitingRoom(code, roomName);
-    });
+        socket.on('connect', () => {
+            console.log("¡Conectado exitosamente!");
+            statusText.innerText = "SALA ONLINE ACTIVA";
+            statusText.style.color = "#00ff41";
+        });
 
-    socket.on('roomJoined', (data) => {
-        showWaitingRoom(data.code, data.name);
-    });
-    
-    socket.on('errorMsg', (msg) => alert(msg));
+        socket.on('connect_error', (error) => {
+            console.error("Error de conexión:", error);
+            statusText.innerText = "ERROR DE CONEXIÓN";
+            statusText.style.color = "red";
+        });
 
-    socket.on('updatePlayers', (serverPlayers) => {
-        let count = Object.keys(serverPlayers).length;
-        let listHTML = "";
-        for (let id in serverPlayers) {
-            listHTML += `<span style="color:${serverPlayers[id].color}">● </span>`; 
+        socket.on('currentPlayers', (players) => {
+            otherPlayers = players;
+        });
+
+        socket.on('newPlayer', (playerInfo) => {
+            otherPlayers[playerInfo.id] = playerInfo;
+        });
+
+        socket.on('playerMoved', (playerInfo) => {
+            if (otherPlayers[playerInfo.id]) {
+                otherPlayers[playerInfo.id].x = playerInfo.x;
+                otherPlayers[playerInfo.id].y = playerInfo.y;
+                otherPlayers[playerInfo.id].rotation = playerInfo.rotation;
+            }
+        });
+
+        socket.on('playerDisconnected', (id) => {
+            delete otherPlayers[id];
+        });
+
+        function drawShip(x, y, rotation, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.strokeStyle = color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.lineTo(-10, 10);
+            ctx.lineTo(-10, -10);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
         }
-        document.getElementById('connected-count').innerText = count;
-        document.getElementById('players-list').innerHTML = listHTML;
-    });
 
-    function startGameAction() {
-        socket.emit('startGame');
-    }
+        function gameLoop() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // ==========================================
-    // CAMBIO AL ARCHIVO DEL JUEGO
-    // ==========================================
-    socket.on('gameStarted', () => {
-        // 1. Obtenemos el código de la sala actual
-        const code = document.getElementById('waiting-room-code').innerText;
-        
-        // 2. Lo guardamos en la "mochila" (sessionStorage)
-        sessionStorage.setItem("codigoSala", code);
-        
-        // 3. Saltamos al archivo juegoonline.html
-        window.location.href = "juegoonline.html";
-    });
+            for (let id in otherPlayers) {
+                if (id !== socket.id) {
+                    const p = otherPlayers[id];
+                    drawShip(p.x, p.y, p.rotation, "#ff00ea");
+                }
+            }
 
-</script>
+            drawShip(myShip.x, myShip.y, myShip.rotation, myShip.color);
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            let moved = false;
+            if (e.key === "ArrowLeft") { myShip.rotation -= 0.1; moved = true; }
+            if (e.key === "ArrowRight") { myShip.rotation += 0.1; moved = true; }
+            if (e.key === "ArrowUp") {
+                myShip.x += Math.cos(myShip.rotation) * 5;
+                myShip.y += Math.sin(myShip.rotation) * 5;
+                moved = true;
+            }
+            
+            if (moved) {
+                socket.emit('playerMovement', {
+                    x: myShip.x,
+                    y: myShip.y,
+                    rotation: myShip.rotation
+                });
+            }
+        });
+
+        gameLoop();
+    </script>
 </body>
 </html>
