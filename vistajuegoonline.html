@@ -6,16 +6,27 @@
     <title>Asteroids Online - Neon Evolution</title>
     <style>
         body {
-            margin: 0; padding: 0; overflow: hidden;
-            background-color: black; color: #00ecff;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+            color: #00ecff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex; justify-content: center; align-items: center; height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
         canvas {
-            display: block; box-shadow: 0 0 20px #00ecff; border: 2px solid #00ecff;
+            display: block;
+            box-shadow: 0 0 20px #00ecff;
+            border: 2px solid #00ecff;
         }
         #ui-layer {
-            position: absolute; top: 20px; left: 20px; pointer-events: none;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -36,41 +47,66 @@
         const socket = io(); 
 
         let otherPlayers = {};
-        let myShip = { x: canvas.width / 2, y: canvas.height / 2, rotation: 0, color: "#00ecff" };
+        let myShip = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            rotation: 0,
+            color: "#00ecff"
+        };
 
         socket.on('connect', () => {
             statusText.innerText = "SALA ONLINE ACTIVA";
             statusText.style.color = "#00ff41";
         });
 
-        socket.on('currentPlayers', (players) => { otherPlayers = players; });
-        socket.on('newPlayer', (p) => { otherPlayers[p.id] = p; });
-        socket.on('playerMoved', (p) => {
-            if (otherPlayers[p.id]) {
-                otherPlayers[p.id].x = p.x;
-                otherPlayers[p.id].y = p.y;
-                otherPlayers[p.id].rotation = p.rotation;
+        socket.on('currentPlayers', (players) => {
+            otherPlayers = players;
+        });
+
+        socket.on('newPlayer', (playerInfo) => {
+            otherPlayers[playerInfo.id] = playerInfo;
+        });
+
+        socket.on('playerMoved', (playerInfo) => {
+            if (otherPlayers[playerInfo.id]) {
+                otherPlayers[playerInfo.id].x = playerInfo.x;
+                otherPlayers[playerInfo.id].y = playerInfo.y;
+                otherPlayers[playerInfo.id].rotation = playerInfo.rotation;
             }
         });
-        socket.on('playerDisconnected', (id) => { delete otherPlayers[id]; });
+
+        socket.on('playerDisconnected', (id) => {
+            delete otherPlayers[id];
+        });
 
         function drawShip(x, y, rotation, color) {
-            ctx.save(); ctx.translate(x, y); ctx.rotate(rotation);
-            ctx.strokeStyle = color; ctx.shadowBlur = 10; ctx.shadowColor = color; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, 10); ctx.lineTo(-10, -10);
-            ctx.closePath(); ctx.stroke(); ctx.restore();
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.strokeStyle = color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.lineTo(-10, 10);
+            ctx.lineTo(-10, -10);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
         }
 
         function gameLoop() {
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Dibujar otros jugadores (en rosa neón)
+
             for (let id in otherPlayers) {
-                if (id !== socket.id) drawShip(otherPlayers[id].x, otherPlayers[id].y, otherPlayers[id].rotation, "#ff00ea");
+                if (id !== socket.id) {
+                    const p = otherPlayers[id];
+                    drawShip(p.x, p.y, p.rotation, "#ff00ea");
+                }
             }
-            
-            // Dibujar mi nave (en cian neón)
+
             drawShip(myShip.x, myShip.y, myShip.rotation, myShip.color);
             requestAnimationFrame(gameLoop);
         }
@@ -82,7 +118,12 @@
                 myShip.x += Math.cos(myShip.rotation) * 5;
                 myShip.y += Math.sin(myShip.rotation) * 5;
             }
-            socket.emit('playerMovement', { x: myShip.x, y: myShip.y, rotation: myShip.rotation });
+            
+            socket.emit('playerMovement', {
+                x: myShip.x,
+                y: myShip.y,
+                rotation: myShip.rotation
+            });
         });
 
         gameLoop();
