@@ -45,7 +45,7 @@
 
         const statusText = document.getElementById("status");
 
-        // CONEXIÓN AUTOMÁTICA (Busca el servidor donde está alojado el HTML)
+        // CONEXIÓN AUTOMÁTICA AL SERVIDOR
         const socket = io();
 
         let otherPlayers = {};
@@ -102,7 +102,7 @@
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Dibujar otros
+            // Dibujar a los otros jugadores
             for (let id in otherPlayers) {
                 if (id !== socket.id) {
                     const p = otherPlayers[id];

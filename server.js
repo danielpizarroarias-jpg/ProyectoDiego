@@ -1,67 +1,140 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-const cors = require('cors');
-
-const app = express();
-app.use(cors());
-const server = http.createServer(app);
-
-// Configuración de Socket.io para la nube
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
-
-// Servir archivos estáticos de la carpeta
-app.use(express.static(__dirname));
-
-// Ruta principal
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'vista.html'));
-});
-
-// Lógica de jugadores
-let players = {};
-
-io.on('connection', (socket) => {
-    console.log('Jugador conectado:', socket.id);
-
-    // Crear estado inicial
-    players[socket.id] = {
-        x: Math.random() * 800,
-        y: Math.random() * 600,
-        rotation: 0,
-        id: socket.id
-    };
-
-    // Enviar lista de jugadores al nuevo
-    socket.emit('currentPlayers', players);
-    // Avisar a los demás
-    socket.broadcast.emit('newPlayer', players[socket.id]);
-
-    // Recibir y reenviar movimiento
-    socket.on('playerMovement', (movementData) => {
-        if (players[socket.id]) {
-            players[socket.id].x = movementData.x;
-            players[socket.id].y = movementData.y;
-            players[socket.id].rotation = movementData.rotation;
-            socket.broadcast.emit('playerMoved', players[socket.id]);
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroids Online - Neon Evolution</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+            color: #00ecff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
-    });
+        canvas {
+            display: block;
+            box-shadow: 0 0 20px #00ecff;
+            border: 2px solid #00ecff;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <h2 id="status">CONECTANDO AL SERVIDOR...</h2>
+    </div>
+    <canvas id="gameCanvas"></canvas>
 
-    socket.on('disconnect', () => {
-        console.log('Jugador desconectado:', socket.id);
-        delete players[socket.id];
-        io.emit('playerDisconnected', socket.id);
-    });
-});
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth * 0.9;
+        canvas.height = window.innerHeight * 0.8;
 
-// IMPORTANTE: process.env.PORT para Render
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor activo en puerto ${PORT}`);
-});
+        const statusText = document.getElementById("status");
+
+        // CONEXIÓN AUTOMÁTICA AL SERVIDOR
+        const socket = io();
+
+        let otherPlayers = {};
+        let myShip = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            rotation: 0,
+            color: "#00ecff"
+        };
+
+        socket.on('connect', () => {
+            statusText.innerText = "SALA ONLINE ACTIVA";
+            statusText.style.color = "#00ff41";
+        });
+
+        socket.on('currentPlayers', (players) => {
+            otherPlayers = players;
+        });
+
+        socket.on('newPlayer', (playerInfo) => {
+            otherPlayers[playerInfo.id] = playerInfo;
+        });
+
+        socket.on('playerMoved', (playerInfo) => {
+            if (otherPlayers[playerInfo.id]) {
+                otherPlayers[playerInfo.id].x = playerInfo.x;
+                otherPlayers[playerInfo.id].y = playerInfo.y;
+                otherPlayers[playerInfo.id].rotation = playerInfo.rotation;
+            }
+        });
+
+        socket.on('playerDisconnected', (id) => {
+            delete otherPlayers[id];
+        });
+
+        function drawShip(x, y, rotation, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.strokeStyle = color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.lineTo(-10, 10);
+            ctx.lineTo(-10, -10);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar a los otros jugadores
+            for (let id in otherPlayers) {
+                if (id !== socket.id) {
+                    const p = otherPlayers[id];
+                    drawShip(p.x, p.y, p.rotation, "#ff00ea");
+                }
+            }
+
+            // Dibujar mi nave
+            drawShip(myShip.x, myShip.y, myShip.rotation, myShip.color);
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            let moved = false;
+            if (e.key === "ArrowLeft") { myShip.rotation -= 0.1; moved = true; }
+            if (e.key === "ArrowRight") { myShip.rotation += 0.1; moved = true; }
+            if (e.key === "ArrowUp") {
+                myShip.x += Math.cos(myShip.rotation) * 5;
+                myShip.y += Math.sin(myShip.rotation) * 5;
+                moved = true;
+            }
+            
+            if (moved) {
+                socket.emit('playerMovement', {
+                    x: myShip.x,
+                    y: myShip.y,
+                    rotation: myShip.rotation
+                });
+            }
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
