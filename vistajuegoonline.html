@@ -1,73 +1,73 @@
-@ -2,178 +2,147 @@
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Asteroids - Online Lobby</title>
     
     <script>
+        // Tu redirección original
         if (window.location.protocol === "file:") {
             window.location.href = "http://localhost:3000/vistajuegoonline.html";
         }
     </script>
     
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; user-select: none; font-family: 'Courier New', monospace; color: white; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; user-select: none; font-family: 'Courier New', monospace; color: white; text-align: center; }
         canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        .menu-box { 
-            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9); z-index: 150; border: 4px solid #fff; 
-            width: 400px; padding: 40px; text-align: center; 
-        }
-
-        input, select {
-            background: #000; color: #fff; border: 2px solid #fff; padding: 12px;
-            font-size: 18px; text-align: center; width: 80%; margin-top: 10px;
-            text-transform: uppercase; font-family: 'Courier New', monospace;
-        }
-
-        button {
-            background: #000; color: #fff; border: 2px solid #fff; padding: 12px;
-            font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 15px; 
-            width: 100%; font-family: 'Courier New', monospace; transition: 0.2s;
-        }
-        button:hover { background: #fff; color: #000; }
-        
-        #room-info {
-            position: absolute; top: 20px; right: 20px; z-index: 10;
-            border: 2px solid #00f2ff; padding: 10px; background: rgba(0,0,0,0.8);
-            text-align: right;
-        }
-
         .hidden { display: none !important; }
+        
+        /* Estilos de tus cajas de menú */
+        .menu-box { 
+            position: relative;
+            z-index: 10;
+            margin: 100px auto; 
+            padding: 20px; 
+            border: 2px solid white; 
+            width: 500px; 
+            background: #111; 
+        }
+
+        button { 
+            background: #000; 
+            color: white; 
+            border: 1px solid white; 
+            padding: 10px 20px; 
+            margin: 10px; 
+            cursor: pointer; 
+            font-family: 'Courier New', monospace; 
+            font-weight: bold; 
+            font-size: 16px;
+        }
+        button:hover { background: #333; }
+        
+        input { 
+            padding: 10px; 
+            font-family: 'Courier New', monospace; 
+            text-align: center; 
+            font-size: 18px; 
+            text-transform: uppercase; 
+            background: #000;
+            color: #fff;
+            border: 1px solid #fff;
+        }
     </style>
 </head>
 <body>
 
     <div id="main-menu" class="menu-box">
-        <h1 style="margin-top:0">MULTIJUGADOR</h1>
-        <button onclick="showCreateRoomMenu()">CREAR SALA NUEVA</button>
-        <div style="margin: 30px 0; border-top: 1px solid #555;"></div>
-        <input type="text" id="room-input" placeholder="CÓDIGO DE SALA" maxlength="4">
-        <button onclick="joinRoom()" style="border-color: #39ff14; color: #39ff14;">UNIRSE A SALA</button>
-        <button onclick="window.location.href='vista.html'" style="border-color: #ff0055; color: #ff0055;">VOLVER AL MENÚ</button>
+        <h2>ASTEROIDS MULTIJUGADOR</h2>
+        <button onclick="document.getElementById('main-menu').classList.add('hidden'); document.getElementById('create-room-menu').classList.remove('hidden');">CREAR SALA</button>
+        <br><br>
+        <input type="text" id="room-input" placeholder="CÓDIGO" maxlength="4">
+        <button onclick="joinRoom()">UNIRSE A SALA</button>
+        <br><br>
+        <button onclick="window.location.href='index.html'" style="border-color: #ff0055; color: #ff0055;">VOLVER AL MENÚ PRINCIPAL</button>
     </div>
 
-    <div id="create-room-menu" class="menu-box hidden" style="border-color:#00f2ff">
-        <h2 style="color:#00f2ff; margin-top:0">CONFIGURAR SALA</h2>
-        <input type="text" id="room-name-input" placeholder="NOMBRE DE LA PARTIDA" maxlength="15">
-        
-        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; padding: 0 10%;">
-            <label for="room-max-players" style="font-size: 16px;">JUGADORES:</label>
-            <select id="room-max-players" style="width: 50%; margin-top: 0;">
-                <option value="2">2 Máx</option>
-                <option value="3">3 Máx</option>
-                <option value="4">4 Máx</option>
-            </select>
-        </div>
-
-        <button onclick="confirmCreateRoom()" style="border-color: #00f2ff; color: #00f2ff;">CONFIRMAR Y CREAR</button>
-        <button onclick="cancelCreateRoom()">CANCELAR</button>
+    <div id="create-room-menu" class="menu-box hidden">
+        <h2>CONFIGURAR SALA</h2>
+        <button onclick="socket.emit('createRoom', 'Sala de Mando')">CONFIRMAR Y CREAR</button>
+        <button onclick="document.getElementById('create-room-menu').classList.add('hidden'); document.getElementById('main-menu').classList.remove('hidden');">VOLVER</button>
     </div>
 
     <div id="waiting-room-menu" class="menu-box hidden" style="border-color:#39ff14">
@@ -83,97 +83,81 @@
         <div id="players-list" style="margin-bottom: 20px; font-size: 24px; letter-spacing: 5px;"></div>
         
         <button onclick="startGameAction()" style="border-color: #00f2ff; color: #00f2ff;">¡EMPEZAR PARTIDA!</button>
-        <button onclick="location.reload()" style="border-color: #ff0055; color: #ff0055;">SALIR</button>
+        
+        <button onclick="window.location.href='index.html'" style="border-color: #ff0055; color: #ff0055;">SALIR</button>
     </div>
 
     <canvas id="canvas" class="hidden"></canvas>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    window.socket = io(); 
-    var socket = window.socket;
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        window.socket = io(); 
+        var socket = window.socket;
 
-    // ==========================================
-    // LÓGICA DE MENÚS Y LOBBY
-    // ==========================================
+        // ==========================================
+        // LÓGICA DE MENÚS Y LOBBY
+        // ==========================================
 
-    function showCreateRoomMenu() {
-        document.getElementById('main-menu').classList.add('hidden');
-        document.getElementById('create-room-menu').classList.remove('hidden');
-    }
-
-    function cancelCreateRoom() {
-        document.getElementById('create-room-menu').classList.add('hidden');
-        document.getElementById('main-menu').classList.remove('hidden');
-    }
-
-    function confirmCreateRoom() {
-        const roomName = document.getElementById('room-name-input').value.trim() || "Sala Espacial";
-        const maxPlayers = document.getElementById('room-max-players').value;
-        socket.emit('createRoom', { name: roomName, maxPlayers: parseInt(maxPlayers) });
-    }
-
-    function joinRoom() {
-        const code = document.getElementById('room-input').value.trim().toUpperCase();
-        if (code.length > 0) socket.emit('joinRoom', code);
-    }
-
-    function copyRoomCode() {
-        const code = document.getElementById('waiting-room-code').innerText;
-        navigator.clipboard.writeText(code).then(() => {
-            const btn = document.getElementById('copy-btn');
-            btn.innerText = "¡COPIADO! ✔️";
-            setTimeout(() => { btn.innerText = "📋 COPIAR CÓDIGO"; }, 2000);
-        });
-    }
-
-    function showWaitingRoom(code, name) {
-        document.getElementById('main-menu').classList.add('hidden');
-        document.getElementById('create-room-menu').classList.add('hidden');
-        document.getElementById('waiting-room-menu').classList.remove('hidden');
-        document.getElementById('waiting-room-code').innerText = code;
-        document.getElementById('waiting-room-name').innerText = name.toUpperCase();
-    }
-
-    socket.on('roomCreated', (code) => {
-        const roomName = document.getElementById('room-name-input').value.trim() || "Sala Espacial";
-        showWaitingRoom(code, roomName);
-    });
-
-    socket.on('roomJoined', (data) => {
-        showWaitingRoom(data.code, data.name);
-    });
-    
-    socket.on('errorMsg', (msg) => alert(msg));
-
-    socket.on('updatePlayers', (serverPlayers) => {
-        let count = Object.keys(serverPlayers).length;
-        let listHTML = "";
-        for (let id in serverPlayers) {
-            listHTML += `<span style="color:${serverPlayers[id].color}">● </span>`; 
+        function joinRoom() {
+            const code = document.getElementById('room-input').value.trim().toUpperCase();
+            if (code.length > 0) socket.emit('joinRoom', code);
         }
-        document.getElementById('connected-count').innerText = count;
-        document.getElementById('players-list').innerHTML = listHTML;
-    });
 
-    function startGameAction() {
-        socket.emit('startGame');
-    }
+        function copyRoomCode() {
+            const code = document.getElementById('waiting-room-code').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.getElementById('copy-btn');
+                btn.innerText = "¡COPIADO! ✔️";
+                setTimeout(() => { btn.innerText = "📋 COPIAR CÓDIGO"; }, 2000);
+            });
+        }
 
-    // ==========================================
-    // CAMBIO AL ARCHIVO DEL JUEGO
-    // ==========================================
-    socket.on('gameStarted', () => {
-        // 1. Obtenemos el código de la sala actual
-        const code = document.getElementById('waiting-room-code').innerText;
+        function showWaitingRoom(code, name) {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('create-room-menu').classList.add('hidden');
+            document.getElementById('waiting-room-menu').classList.remove('hidden');
+            document.getElementById('waiting-room-code').innerText = code;
+            document.getElementById('waiting-room-name').innerText = name.toUpperCase();
+        }
+
+        socket.on('roomCreated', (code) => {
+            showWaitingRoom(code, "Tu Sala");
+        });
+
+        socket.on('roomJoined', (code, name) => {
+            showWaitingRoom(code, name);
+        });
         
-        // 2. Lo guardamos en la "mochila" (sessionStorage)
-        sessionStorage.setItem("codigoSala", code);
-        
-        // 3. Saltamos al archivo juegoonline.html
-        window.location.href = "juegoonline.html";
-    });
+        socket.on('errorMsg', (msg) => alert(msg));
 
-</script>
+        socket.on('updatePlayers', (serverPlayers) => {
+            let count = Object.keys(serverPlayers).length;
+            let listHTML = "";
+            for (let id in serverPlayers) {
+                listHTML += `<span style="color:${serverPlayers[id].color}">● </span>`; 
+            }
+            document.getElementById('connected-count').innerText = count;
+            document.getElementById('players-list').innerHTML = listHTML;
+        });
+
+        function startGameAction() {
+            socket.emit('startGame');
+        }
+
+        // ==========================================
+        // CAMBIO AL ARCHIVO DEL JUEGO
+        // ==========================================
+        socket.on('gameStarted', () => {
+            // 1. Obtenemos el código de la sala actual
+            const code = document.getElementById('waiting-room-code').innerText;
+            
+            // 2. Lo guardamos en la "mochila" (sessionStorage)
+            sessionStorage.setItem("codigoSala", code);
+            
+            // 3. Saltamos al archivo juegoonline.html
+            window.location.href = "juegoonline.html";
+        });
+
+    </script>
 </body>
 </html>

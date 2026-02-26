@@ -10,6 +10,13 @@ const io = new Server(server);
 // Servir archivos estáticos de la carpeta actual
 app.use(express.static(__dirname));
 
+// ==========================================
+// CAMBIO AQUÍ: Ahora carga 'index.html'
+// ==========================================
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Objeto para guardar todas las salas activas
 const rooms = {};
 
@@ -48,7 +55,7 @@ io.on('connection', (socket) => {
         // Añadimos al creador (Host) a la sala
         rooms[code].players[socket.id] = { color: '#39ff14', isHost: true };
 
-        // Le respondemos a tu HTML con los eventos que está esperando
+        // Le respondemos al HTML con los eventos que está esperando
         socket.emit('roomCreated', code);
         io.to(code).emit('updatePlayers', rooms[code].players);
     });
@@ -62,11 +69,11 @@ io.on('connection', (socket) => {
             // Añadimos al jugador a la sala
             rooms[code].players[socket.id] = { color: '#00f2ff', isHost: false };
             
-            // Le respondemos a tu HTML
+            // Le respondemos al HTML
             socket.emit('roomJoined', code, rooms[code].name);
             io.to(code).emit('updatePlayers', rooms[code].players);
         } else {
-            // Si el código no existe o ya están jugando, mandamos el error que tu HTML espera
+            // Si el código no existe o ya están jugando, mandamos el error
             socket.emit('errorMsg', 'La sala no existe o la partida ya ha empezado.');
         }
     });
@@ -75,7 +82,7 @@ io.on('connection', (socket) => {
     socket.on('startGame', () => {
         if (socket.roomId && rooms[socket.roomId]) {
             rooms[socket.roomId].state = 'playing';
-            // Avisa a todos en la sala para que ejecuten tu window.location.href
+            // Avisa a todos en la sala para que salten a la vista de juego
             io.to(socket.roomId).emit('gameStarted');
         }
     });
