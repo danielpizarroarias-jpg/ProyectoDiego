@@ -5,7 +5,7 @@
     <title>Neon Co-op Online</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; cursor: crosshair; user-select: none; }
-        canvas { display: block; margin: 0 auto; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
         
         /* UI MONEDAS */
         #money-panel {
@@ -88,6 +88,7 @@
         <div id="bar-bg"><div id="bar-fill"></div></div>
         <div style="margin-top:10px">VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
         <div style="margin-top:10px">JUGADORES: <span id="players-count" style="color:#0f0">0</span></div>
+        <button onclick="toggleFullscreen()" style="margin-top:15px; padding:5px 10px; width:auto; font-size:12px;">PANTALLA COMPLETA</button>
     </div>
 
     <div id="level-notice">SECTOR 2<br><span style="font-size:25px">+1 VIDA</span></div>
@@ -136,18 +137,22 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Set canvas to server dimensions
-        canvas.width = CANVAS_WIDTH;
-        canvas.height = CANVAS_HEIGHT;
-        
-        // Scale canvas with CSS to fit screen while maintaining aspect ratio
+        // Use full window size for the canvas
         function resizeCanvas() {
-            const scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
-            canvas.style.width = (CANVAS_WIDTH * scale * 0.95) + 'px';
-            canvas.style.height = (CANVAS_HEIGHT * scale * 0.95) + 'px';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
+        
+        // Fullscreen mode
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
         
         let mouse = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
         let keys = {};
@@ -265,11 +270,9 @@
         }
         
         window.addEventListener('mousemove', e => {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = CANVAS_WIDTH / rect.width;
-            const scaleY = CANVAS_HEIGHT / rect.height;
-            mouse.x = (e.clientX - rect.left) * scaleX;
-            mouse.y = (e.clientY - rect.top) * scaleY;
+            // Mouse coordinates relative to canvas (full window)
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
         });
         
         window.addEventListener('mousedown', e => {
@@ -299,19 +302,44 @@
         // Send input to server
         setInterval(() => {
             if (gameState === 'PLAYING' && localPlayer) {
-                const angle = Math.atan2(mouse.y - localPlayer.y, mouse.x - localPlayer.x);
+                // Convert mouse from screen space to server space (1200x800)
+                const screenW = canvas.width;
+                const screenH = canvas.height;
+                const serverMouseX = (mouse.x / screenW) * CANVAS_WIDTH;
+                const serverMouseY = (mouse.y / screenH) * CANVAS_HEIGHT;
+                
+                // Get local player position in server space
+                const serverPlayerX = localPlayer.x;
+                const serverPlayerY = localPlayer.y;
+                
+                const angle = Math.atan2(serverMouseY - serverPlayerY, serverMouseX - serverPlayerX);
+                
                 socket.emit('playerInput', { 
                     keys: keys, 
                     angle: angle, 
-                    isShooting: isShooting 
+                    isShooting: isShooting,
+                    width: screenW,
+                    height: screenH
                 });
             }
         }, 1000 / 60);
         
         function renderGame(room) {
-            // Clear canvas
+            // Get actual screen dimensions (full window)
+            const screenWidth = canvas.width;
+            const screenHeight = canvas.height;
+            
+            // Calculate scale factors to fit 1200x800 game to actual screen
+            const scaleX = screenWidth / CANVAS_WIDTH;
+            const scaleY = screenHeight / CANVAS_HEIGHT;
+            
+            // Clear canvas (use actual screen dimensions)
             ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            ctx.fillRect(0, 0, screenWidth, screenHeight);
+            
+            // Scale the context to match the game coordinates to screen size
+            ctx.save();
+            ctx.scale(scaleX, scaleY);
             
             if (!room) return;
             
@@ -426,6 +454,9 @@
                 ctx.fillText(p.name || 'Jugador', p.x, p.y - 20);
             }
         }
+        
+        // Restore context after scaling
+        ctx.restore();
         
         socket.emit('getRanking', 'online');
     </script>

@@ -282,11 +282,13 @@ setInterval(() => {
             p.x += p.velX;
             p.y += p.velY;
             
-            // Wrap around screen
-            if (p.x < 0) p.x = CANVAS_WIDTH;
-            else if (p.x > CANVAS_WIDTH) p.x = 0;
-            if (p.y < 0) p.y = CANVAS_HEIGHT;
-            else if (p.y > CANVAS_HEIGHT) p.y = 0;
+            // Wrap around each player's individual screen
+            const playerScreenW = p.screenWidth || CANVAS_WIDTH;
+            const playerScreenH = p.screenHeight || CANVAS_HEIGHT;
+            if (p.x < 0) p.x = playerScreenW;
+            else if (p.x > playerScreenW) p.x = 0;
+            if (p.y < 0) p.y = playerScreenH;
+            else if (p.y > playerScreenH) p.y = 0;
             
             // Blink countdown
             if (p.blink > 0) p.blink--;

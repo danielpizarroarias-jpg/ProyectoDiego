@@ -5,7 +5,7 @@
     <title>Asteroids - Neon Evolution</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; cursor: crosshair; user-select: none; }
-        canvas { display: block; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
         
         /* UI MONEDAS */
         #money-panel {
@@ -60,6 +60,7 @@
         <div id="bar-bg"><div id="bar-fill"></div></div>
         <div style="margin-top:10px">VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
         <button onclick="showPauseMenu()" style="margin-top:15px; padding:5px 10px; width:auto; font-size:12px;">MENÚ</button>
+        <button onclick="toggleFullscreen()" style="margin-top:5px; padding:5px 10px; width:auto; font-size:12px;">PANTALLA COMPLETA</button>
     </div>
 
     <div id="level-notice">SECTOR 2<br><span style="font-size:25px">+1 VIDA</span></div>
@@ -106,15 +107,27 @@
     <canvas id="canvas"></canvas>
 
 <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
         let ship, asteroids, lasers, enemyLasers, boss, drones, score, level, nextGoal, money, upgradeCost, upgradeCount, gameState, keys, mouse;
-    let fireDelay, lastFire = 0, thrustPower, projectiles;
+        let fireDelay, lastFire = 0, thrustPower, projectiles;
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    window.addEventListener('resize', resize);
-    resize();
+        function resize() { 
+            canvas.width = window.innerWidth; 
+            canvas.height = window.innerHeight; 
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        
+        // Fullscreen mode
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
 
     keys = {}; mouse = { x: 0, y: 0 };
     window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
