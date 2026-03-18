@@ -85,8 +85,9 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('createRoom', () => {
+    socket.on('createRoom', (username) => {
         const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const playerName = username || 'Host';
         rooms[code] = {
             code: code,
             playing: false,
@@ -102,8 +103,10 @@ io.on('connection', (socket) => {
         };
         socket.join(code);
         socket.roomCode = code;
+        socket.username = playerName;
         rooms[code].players[socket.id] = {
             id: socket.id,
+            name: playerName,
             isHost: true,
             x: CANVAS_WIDTH / 2 - 100,
             y: CANVAS_HEIGHT / 2,
@@ -125,10 +128,13 @@ io.on('connection', (socket) => {
         socket.emit('roomCreated', code);
     });
 
-    socket.on('joinRoom', (code) => {
+    socket.on('joinRoom', (data) => {
+        const code = data.code;
+        const username = data.username || 'Guest';
         if (rooms[code] && !rooms[code].playing) {
             socket.join(code);
             socket.roomCode = code;
+            socket.username = username;
             
             // Position new player at different location
             const playerCount = Object.keys(rooms[code].players).length;
@@ -137,6 +143,7 @@ io.on('connection', (socket) => {
             
             rooms[code].players[socket.id] = {
                 id: socket.id,
+                name: username,
                 isHost: false,
                 x: CANVAS_WIDTH / 2 + offsetX,
                 y: CANVAS_HEIGHT / 2 + offsetY,
@@ -225,9 +232,10 @@ io.on('connection', (socket) => {
     socket.on('saveScore', async (data) => {
         if (!mongoConnected || data.score <= 0) return;
         try {
-            await new Score({ username: data.name, score: data.score, mode: data.mode }).save();
-            const topScores = await Score.find({ mode: data.mode }).sort({ score: -1 }).limit(5);
-            io.emit('receiveRanking', { mode: data.mode, scores: topScores });
+            const playerName = socket.username || data.name || 'Anonymous';
+            await new Score({ username: playerName, score: data.score, mode: data.mode || 'online' }).save();
+            const topScores = await Score.find({ mode: data.mode || 'online' }).sort({ score: -1 }).limit(5);
+            io.emit('receiveRanking', { mode: data.mode || 'online', scores: topScores });
         } catch (e) {
             console.log("Error al guardar puntuación");
         }

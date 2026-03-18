@@ -158,11 +158,14 @@
         
         function createRoom() { 
             username = document.getElementById('username').value || 'PILOTO';
-            socket.emit('createRoom'); 
+            socket.emit('createRoom', username); 
         }
         function joinRoom() { 
             username = document.getElementById('username').value || 'PILOTO';
-            socket.emit('joinRoom', document.getElementById('roomCode').value.toUpperCase()); 
+            socket.emit('joinRoom', { 
+                code: document.getElementById('roomCode').value.toUpperCase(),
+                username: username
+            }); 
         }
         function startGame() { 
             socket.emit('startGame', currentRoom); 
@@ -316,8 +319,10 @@
                 
                 if (localPlayer.lives <= 0 && !scoreSaved) {
                     scoreSaved = true;
+                    // Get the player's name from the room
+                    const playerName = localPlayer.name || username;
                     socket.emit('saveScore', { 
-                        name: username, 
+                        name: playerName, 
                         score: room.score,
                         mode: 'online'
                     });
@@ -403,12 +408,10 @@
                 ctx.stroke();
                 
                 // Draw player name
-                if (id !== socket.id) {
-                    ctx.fillStyle = '#aaa';
-                    ctx.font = '10px Courier New';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('P2', p.x, p.y - 20);
-                }
+                ctx.fillStyle = (id === socket.id) ? '#00f2ff' : '#aaa';
+                ctx.font = 'bold 12px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.name || 'Jugador', p.x, p.y - 20);
             }
         }
         
