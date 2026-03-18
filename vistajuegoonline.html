@@ -110,10 +110,12 @@
 
     <div id="shop-menu" class="hidden">
         <h2 style="color:#ffd700">TIENDA</h2>
+        <p>TU DINERO: <span id="shop-money">0</span> ORO</p>
         <p>COSTE: <span id="next-price">50</span> ORO</p>
         <button onclick="buyUpgrade('fireRate')">CADENCIA</button>
         <button onclick="buyUpgrade('thrust')">MOTOR</button>
         <button id="btn-multishot" style="color:#00f2ff; border-color:#00f2ff" class="hidden" onclick="buyUpgrade('multishot')">BALA EXTRA</button>
+        <button onclick="closeShop()" style="border-color:#888; color:#888; margin-top:20px;">CERRAR</button>
     </div>
 
     <div id="boss-reward-menu" class="hidden">
@@ -222,10 +224,14 @@
             setTimeout(() => notice.style.opacity = 0, 1500);
         });
         
-        socket.on('shopAvailable', () => {
-            gameState = 'SHOPPING';
-            document.getElementById('shop-menu').classList.remove('hidden');
-        });
+        // Check locally if player can buy upgrades (without pausing game)
+        setInterval(() => {
+            if (gameState === 'PLAYING' && localPlayer && localPlayer.money >= (localPlayer.upgradeCost || 50)) {
+                // Show shop button or notification - game keeps running
+                document.getElementById('shop-menu').classList.remove('hidden');
+                gameState = 'SHOPPING';
+            }
+        }, 500);
         
         socket.on('bossAppeared', () => {
             document.getElementById('boss-ui').classList.remove('hidden');
@@ -247,6 +253,11 @@
         
         function buyUpgrade(type) {
             socket.emit('buyUpgrade', { room: currentRoom, type: type });
+        }
+        
+        function closeShop() {
+            document.getElementById('shop-menu').classList.add('hidden');
+            gameState = 'PLAYING';
         }
         
         function applySuperUpgrade(type) {
@@ -316,6 +327,7 @@
                 let prog = ((room.score - (room.nextGoal - (1000 + room.level * 200))) / (1000 + room.level * 200)) * 100;
                 document.getElementById('bar-fill').style.width = Math.max(0, Math.min(100, prog)) + "%";
                 document.getElementById('next-price').innerText = localPlayer.upgradeCost || 50;
+                document.getElementById('shop-money').innerText = localPlayer.money || 0;
                 
                 if (localPlayer.lives <= 0 && !scoreSaved) {
                     scoreSaved = true;

@@ -59,6 +59,7 @@
         <div>SECTOR: <span id="lvl-txt" style="color:#00f2ff">1</span></div>
         <div id="bar-bg"><div id="bar-fill"></div></div>
         <div style="margin-top:10px">VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
+        <button onclick="showPauseMenu()" style="margin-top:15px; padding:5px 10px; width:auto; font-size:12px;">MENÚ</button>
     </div>
 
     <div id="level-notice">SECTOR 2<br><span style="font-size:25px">+1 VIDA</span></div>
@@ -136,6 +137,14 @@
             gameState = 'PLAYING';
             document.getElementById('pause-menu').classList.add('hidden');
             run();
+        }
+    }
+    
+    function showPauseMenu() {
+        if (gameState === 'PLAYING' || gameState === 'SHOPPING') {
+            gameState = 'PAUSED';
+            document.getElementById('pause-menu').classList.remove('hidden');
+            document.getElementById('shop-menu').classList.add('hidden');
         }
     }
 

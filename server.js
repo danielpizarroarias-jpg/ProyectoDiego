@@ -201,8 +201,8 @@ io.on('connection', (socket) => {
         if (data.type === 'thrust') p.thrustPower += 0.08;
         if (data.type === 'multishot') p.projectiles++;
         
-        room.state = 'PLAYING';
-        io.to(room.code).emit('gameStarted'); // Resume game
+        // Game continues running - just send updated state
+        io.to(room.code).emit('gameState', room);
     });
 
     socket.on('applySuperUpgrade', (data) => {
@@ -267,7 +267,7 @@ setInterval(() => {
             let p = room.players[id];
             if (p.lives <= 0) continue;
             
-            // Movement
+            // Movement - always active
             if (p.inputs['KeyW'] || p.inputs['ArrowUp']) {
                 p.velX += Math.cos(p.angle) * p.thrustPower;
                 p.velY += Math.sin(p.angle) * p.thrustPower;
@@ -286,7 +286,7 @@ setInterval(() => {
             // Blink countdown
             if (p.blink > 0) p.blink--;
             
-            // Shooting
+            // Shooting - always active
             if (p.isShooting && p.blink === 0 && (now - p.lastFire > p.fireDelay)) {
                 for (let i = 0; i < p.projectiles; i++) {
                     let offset = (i - (p.projectiles - 1) / 2) * 0.2;
@@ -589,17 +589,9 @@ setInterval(() => {
             }
         }
         
-        // Check if shop should open (any player has enough money and no boss)
-        if (!room.boss) {
-            for (let id in room.players) {
-                let p = room.players[id];
-                if (p.money >= p.upgradeCost) {
-                    io.to(room.code).emit('shopAvailable');
-                    room.state = 'SHOPPING';
-                    break;
-                }
-            }
-        }
+        // Check if any player has enough money for upgrades (but don't pause game)
+        // Shop is available individually - game continues running
+        // Players can buy upgrades at any time when they have enough money
         
         // Send game state to all players
         io.to(code).emit('gameState', room);
