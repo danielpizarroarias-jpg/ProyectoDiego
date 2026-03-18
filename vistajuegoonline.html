@@ -333,13 +333,13 @@
             const scaleX = screenWidth / CANVAS_WIDTH;
             const scaleY = screenHeight / CANVAS_HEIGHT;
             
-            // Clear canvas (use actual screen dimensions)
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, screenWidth, screenHeight);
-            
-            // Scale the context to match the game coordinates to screen size
-            ctx.save();
-            ctx.scale(scaleX, scaleY);
+        // Reset any previous transforms and clear canvas
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, screenWidth, screenHeight);
+        
+        // Scale the context to match the game coordinates to screen size
+        ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
             
             if (!room) return;
             
@@ -455,8 +455,8 @@
             }
         }
         
-        // Restore context after scaling
-        ctx.restore();
+        // Reset transform for next frame
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         
         socket.emit('getRanking', 'online');
     </script>
