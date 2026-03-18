@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -9,18 +10,79 @@ const io = new Server(server);
 
 app.use(express.static(__dirname));
 
-// --- CONFIGURACIÓN BASE DE DATOS ---
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/proyectodiego';
+// --- SISTEMA DE RANKING LOCAL (Sin MongoDB) ---
+const RANKING_FILE = 'ranking.json';
 
+// Cargar ranking desde archivo
+function loadRanking() {
+    try {
+        if (fs.existsSync(RANKING_FILE)) {
+            return JSON.parse(fs.readFileSync(RANKING_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.log("Error al cargar ranking:", e);
+    }
+    return [];
+}
+
+// Guardar ranking en archivo
+function saveRanking(ranking) {
+    try {
+        fs.writeFileSync(RANKING_FILE, JSON.stringify(ranking, null, 2));
+    } catch (e) {
+        console.log("Error al guardar ranking:", e);
+    }
+}
+
+// Ranking en memoria
+let ranking = loadRanking();
+
+// Actualizar puntuación de un jugador (guardar solo la mejor)
+function updatePlayerScore(username, score, mode) {
+    let existing = ranking.find(r => r.username === username && r.mode === mode);
+    if (existing) {
+        if (score > existing.score) {
+            existing.score = score;
+            existing.date = new Date().toISOString();
+        }
+    } else {
+        ranking.push({ username, score, mode, date: new Date().toISOString() });
+    }
+    // Ordenar por puntuación
+    ranking.sort((a, b) => b.score - a.score);
+    // Guardar en archivo
+    saveRanking(ranking);
+}
+
+// --- CONFIGURACIÓN BASE DE DATOS (MongoDB) ---
 let mongoConnected = false;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://sandro:yosoysandro@asteroids.nkmk4b6.mongodb.net/proyectodiego?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
     .then(() => { 
-        console.log("✅ Conectado a Ranking Global (Modo Compatible)");
+        console.log("✅ Conectado a MongoDB");
         mongoConnected = true;
+        
+        // Cargar puntuaciones existentes de MongoDB al iniciar
+        Score.find({ mode: 'online' }).sort({ score: -1 }).limit(100).then(scores => {
+            for (let s of scores) {
+                let existing = ranking.find(r => r.username === s.username && r.mode === s.mode);
+                if (!existing || s.score > existing.score) {
+                    if (existing) {
+                        existing.score = s.score;
+                        existing.date = s.date;
+                    } else {
+                        ranking.push({ username: s.username, score: s.score, mode: s.mode, date: s.date });
+                    }
+                }
+            }
+            // Reordenar
+            ranking.sort((a, b) => b.score - a.score);
+            console.log("📊 Ranking cargado desde MongoDB");
+        }).catch(err => console.log("Error cargando ranking:", err));
     })
     .catch(err => {
-        console.log("⚠️ MongoDB no disponible - Ranking deshabilitado");
+        console.log("⚠️ MongoDB no disponible - Usando ranking local");
     });
 
 const ScoreSchema = new mongoose.Schema({
@@ -71,18 +133,17 @@ function spawnBoss(room) {
 
 io.on('connection', (socket) => {
     // Petición de ranking filtrada por modo
-    socket.on('getRanking', async (mode) => {
-        if (!mongoConnected) {
-            socket.emit('receiveRanking', { mode, scores: [] });
-            return;
-        }
-        try {
-            const topScores = await Score.find({ mode: mode }).sort({ score: -1 }).limit(5);
-            socket.emit('receiveRanking', { mode, scores: topScores });
-        } catch (e) {
-            console.log("Error al leer ranking " + mode);
-            socket.emit('receiveRanking', { mode, scores: [] });
-        }
+    socket.on('getRanking', (mode) => {
+        // Usar ranking local (funciona sin MongoDB)
+        const filtered = ranking.filter(r => r.mode === mode).slice(0, 10);
+        socket.emit('receiveRanking', { mode, scores: filtered });
+    });
+    
+    // Obtener mejor puntuación del jugador
+    socket.on('getBestScore', (data) => {
+        const { username, mode } = data;
+        const playerScore = ranking.find(r => r.username === username && r.mode === mode);
+        socket.emit('bestScore', { score: playerScore ? playerScore.score : 0 });
     });
 
     socket.on('createRoom', (username) => {
@@ -234,16 +295,22 @@ io.on('connection', (socket) => {
         io.to(room.code).emit('gameStarted');
     });
 
-    socket.on('saveScore', async (data) => {
-        if (!mongoConnected || data.score <= 0) return;
-        try {
-            const playerName = socket.username || data.name || 'Anonymous';
-            await new Score({ username: playerName, score: data.score, mode: data.mode || 'online' }).save();
-            const topScores = await Score.find({ mode: data.mode || 'online' }).sort({ score: -1 }).limit(5);
-            io.emit('receiveRanking', { mode: data.mode || 'online', scores: topScores });
-        } catch (e) {
-            console.log("Error al guardar puntuación");
+    socket.on('saveScore', (data) => {
+        if (data.score <= 0) return;
+        const playerName = socket.username || data.name || 'Anonymous';
+        const mode = data.mode || 'online';
+        console.log("Savee")
+        // Guardar mejor puntuación en ranking local
+        updatePlayerScore(playerName, data.score, mode);
+        
+        // También guardar en MongoDB si está disponible
+        if (mongoConnected) {
+            new Score({ username: playerName, score: data.score, mode: mode }).save().catch(e => console.log("Error MongoDB"));
         }
+        
+        // Enviar ranking actualizado a todos
+        const updatedRanking = ranking.filter(r => r.mode === mode).slice(0, 10);
+        io.emit('receiveRanking', { mode, scores: updatedRanking });
     });
 
     socket.on('disconnect', () => {
@@ -562,8 +629,8 @@ setInterval(() => {
                 }
             }
             
-            // Spawn more asteroids if too few
-            if (room.asteroids.length < 2) {
+            // Spawn more asteroids if too few (but not during boss levels)
+            if (!room.boss && room.asteroids.length < 2) {
                 spawnAsteroids(room, 1);
             }
         }

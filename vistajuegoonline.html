@@ -53,8 +53,6 @@
         #boss-ui { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; text-align: center; font-family: monospace; z-index: 50; }
         #boss-ui-inner { color: red; font-weight: bold; }
         #boss-hp-fill { height: 100%; background: red; width: 100%; }
-        
-        #ranking-list { list-style: none; padding: 0; text-align: left; color: #0f0; font-size: 14px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -67,10 +65,6 @@
             <button onclick="createRoom()">CREAR SALA</button>
             <input type="text" id="roomCode" placeholder="CÓDIGO SALA">
             <button onclick="joinRoom()">UNIRSE</button>
-            <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
-                <h3 style="color: #ffd700;">TOP 5 MUNDIAL</h3>
-                <ul id="ranking-list"><li>Cargando ranking...</li></ul>
-            </div>
         </div>
         <div id="wait-menu" class="box hidden">
             <h2 style="color: #ff00ff;">SALA: <span id="display-code"></span></h2>
@@ -161,8 +155,7 @@
         let localPlayer = null;
         let gameState = 'LOBBY';
         let currentRoom = null;
-        let username = '';
-        
+        let username = '';         
         function createRoom() { 
             username = document.getElementById('username').value || 'PILOTO';
             socket.emit('createRoom', username); 
@@ -192,14 +185,6 @@
         socket.on('youAreHost', () => document.getElementById('btn-start').classList.remove('hidden'));
         socket.on('updateLobby', count => {
             document.getElementById('player-count').innerText = count;
-        });
-        
-        socket.on('receiveRanking', data => {
-            if (data.scores && data.scores.length > 0) {
-                document.getElementById('ranking-list').innerHTML = data.scores.map((s, i) => 
-                    `<li>${i + 1}. ${s.username} - ${s.score}</li>`
-                ).join('');
-            }
         });
         
         function showWait(c, host) {
@@ -301,7 +286,7 @@
         
         // Send input to server
         setInterval(() => {
-            if (gameState === 'PLAYING' && localPlayer) {
+            if (gameState === 'PLAYING' && localPlayer && localPlayer.x !== undefined && localPlayer.y !== undefined && mouse.x !== undefined && mouse.y !== undefined) {
                 // Convert mouse from screen space to server space (1200x800)
                 const screenW = canvas.width;
                 const screenH = canvas.height;
@@ -343,7 +328,7 @@
             
             if (!room) return;
             
-            localPlayer = room.players[socket.id];
+            localPlayer = room.players ? room.players[socket.id] : null;
             
             // Update UI
             if (localPlayer) {
@@ -359,6 +344,7 @@
                 
                 if (localPlayer.lives <= 0 && !scoreSaved) {
                     scoreSaved = true;
+                    console.log("Saving score for", localPlayer.name || username, "with score", room.score);
                     // Get the player's name from the room
                     const playerName = localPlayer.name || username;
                     socket.emit('saveScore', { 
@@ -457,8 +443,6 @@
         
         // Reset transform for next frame
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        
-        socket.emit('getRanking', 'online');
     </script>
 </body>
 </html>
