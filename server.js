@@ -184,6 +184,11 @@ io.on('connection', (socket) => {
             p.angle = data.angle;
             p.inputs = data.keys;
             p.isShooting = data.isShooting;
+            // Store player's screen dimensions for screen wrapping
+            if (data.width && data.height) {
+                p.screenWidth = data.width;
+                p.screenHeight = data.height;
+            }
         }
     });
 
