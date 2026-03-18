@@ -7,11 +7,11 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "cors": "^2.8.5"
+    "mongoose": "^9.3.1",
+    "socket.io": "^4.7.2"
   },
-  "devDependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/danielpizarroarias-jpg/ProyectoDiego.git"

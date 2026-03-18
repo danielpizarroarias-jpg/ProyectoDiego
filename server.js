@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -243,5 +244,5 @@ setInterval(() => {
     }
 }, 1000 / 60);
 
-const PORT = process.env.PORT || 3000;
+const MONGO_URI = "mongodb+srv://sandro:yosoysandro@asteroids.nkmk4b6.mongodb.net/?appName=Asteroids";
 server.listen(PORT, () => console.log(`🚀 Servidor en la nube escuchando en el puerto ${PORT}`));
