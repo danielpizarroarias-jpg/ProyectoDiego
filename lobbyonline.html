@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asteroids Co-op - Lobby</title>
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { border: 4px solid #fff; padding: 40px; text-align: center; width: 350px; }
+        input, button { width: 90%; padding: 12px; margin: 10px 0; font-family: 'Courier New', monospace; font-weight: bold; font-size: 16px; }
+        input { background: #111; color: #00f2ff; border: 1px solid #444; text-align: center; }
+        button { background: #000; color: #fff; border: 2px solid #fff; cursor: pointer; text-transform: uppercase; }
+        button:hover { background: #fff; color: #000; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="main-menu" class="box">
+        <h1 style="color: #00f2ff; margin-top:0;">ASTEROIDS CO-OP</h1>
+        <button onclick="createRoom()">CREAR SALA</button>
+        <hr style="border-color: #333; margin: 20px 0;">
+        <input type="text" id="roomCode" placeholder="CÓDIGO DE SALA">
+        <button onclick="joinRoom()">UNIRSE</button>
+        <p id="errorMsg" style="color:#ff0000;"></p>
+    </div>
+
+    <div id="wait-menu" class="box hidden">
+        <h2 style="color: #ff00ff;">SALA: <span id="display-code"></span></h2>
+        <p>Pilotos conectados: <span id="player-count">1</span></p>
+        <button id="btn-start" class="hidden" onclick="startGame()">INICIAR MISIÓN</button>
+        <p id="wait-txt">Esperando al líder...</p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myCode = '';
+
+        function createRoom() { socket.emit('createRoom'); }
+        function joinRoom() { socket.emit('joinRoom', document.getElementById('roomCode').value.toUpperCase()); }
+        function startGame() { socket.emit('startGame', myCode); }
+
+        socket.on('roomCreated', code => showWait(code, true));
+        socket.on('joinedRoom', code => showWait(code, false));
+        socket.on('errorMsg', msg => document.getElementById('errorMsg').innerText = msg);
+        socket.on('updateLobby', count => document.getElementById('player-count').innerText = count);
+        
+        // Cuando el servidor diga que empieza, nos manda al juego de verdad
+        socket.on('goToGame', (code) => {
+            window.location.href = `/vistajuegoonline.html?room=${code}`;
+        });
+
+        function showWait(code, isHost) {
+            myCode = code;
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('wait-menu').classList.remove('hidden');
+            document.getElementById('display-code').innerText = code;
+            if(isHost) {
+                document.getElementById('btn-start').classList.remove('hidden');
+                document.getElementById('wait-txt').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

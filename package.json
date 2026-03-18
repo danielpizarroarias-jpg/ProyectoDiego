@@ -10,5 +10,18 @@
     "express": "^4.18.2",
     "socket.io": "^4.7.2",
     "cors": "^2.8.5"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielpizarroarias-jpg/ProyectoDiego.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/danielpizarroarias-jpg/ProyectoDiego/issues"
+  },
+  "homepage": "https://github.com/danielpizarroarias-jpg/ProyectoDiego#readme"
 }
