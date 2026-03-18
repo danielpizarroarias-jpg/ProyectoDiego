@@ -243,6 +243,9 @@
         
         function buyUpgrade(type) {
             socket.emit('buyUpgrade', { room: currentRoom, type: type });
+            // Cerrar menú de tienda después de comprar
+            document.getElementById('shop-menu').classList.add('hidden');
+            gameState = 'PLAYING';
         }
         
         function closeShop() {
