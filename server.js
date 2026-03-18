@@ -37,7 +37,6 @@ io.on('connection', (socket) => {
         socket.join(code); socket.roomCode = code;
         rooms[code].players[socket.id] = createPlayer(socket.id, true);
         socket.emit('roomCreated', code);
-        console.log(`[+] Sala creada: ${code}`);
     });
 
     socket.on('joinRoom', (code) => {
@@ -46,22 +45,39 @@ io.on('connection', (socket) => {
             rooms[code].players[socket.id] = createPlayer(socket.id, false);
             socket.emit('joinedRoom', code);
             io.to(code).emit('updateLobby', Object.keys(rooms[code].players).length);
-            console.log(`[+] Jugador se unió a la sala: ${code}`);
         } else socket.emit('errorMsg', 'Sala no existe o en partida');
     });
 
-    // --- EL BOTÓN DE INICIAR ---
-    socket.on('startGame', (code) => {
-        console.log(`[!] Petición para iniciar sala: ${code}`);
+    // --- NUEVO: SALIR DE LA SALA ---
+    socket.on('leaveRoom', () => {
+        let code = socket.roomCode;
         let room = rooms[code];
-        if (!room) return console.log("   ❌ Error: La sala no existe en el servidor.");
-        if (!room.players[socket.id]) return console.log("   ❌ Error: El jugador no está registrado en esta sala.");
-        if (!room.players[socket.id].isHost) return console.log("   ❌ Error: El jugador no es el líder (Host).");
-        
-        console.log("   ✅ Todo correcto. ¡Iniciando la partida!");
-        room.playing = true; 
-        spawnAsteroids(room, 5);
-        io.to(code).emit('gameStarted');
+        if (room) {
+            let wasHost = room.players[socket.id]?.isHost;
+            socket.leave(code);
+            delete room.players[socket.id];
+            socket.roomCode = null;
+
+            if (Object.keys(room.players).length === 0) {
+                delete rooms[code]; // Borrar sala vacía
+            } else {
+                // Pasar el líder a otro si el host se fue
+                if (wasHost && !room.playing) {
+                    let newHostId = Object.keys(room.players)[0];
+                    room.players[newHostId].isHost = true;
+                    io.to(newHostId).emit('youAreHost'); 
+                }
+                io.to(code).emit('updateLobby', Object.keys(room.players).length);
+            }
+        }
+    });
+
+    socket.on('startGame', (code) => {
+        let room = rooms[code];
+        if (room && room.players[socket.id] && room.players[socket.id].isHost) {
+            room.playing = true; spawnAsteroids(room, 5);
+            io.to(code).emit('gameStarted');
+        }
     });
 
     socket.on('playerInput', (data) => {
@@ -99,11 +115,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        let room = rooms[socket.roomCode];
+        let code = socket.roomCode;
+        let room = rooms[code];
         if(room) {
+            let wasHost = room.players[socket.id]?.isHost;
             delete room.players[socket.id];
-            if(Object.keys(room.players).length === 0) delete rooms[socket.roomCode];
-            else io.to(socket.roomCode).emit('updateLobby', Object.keys(room.players).length);
+            if(Object.keys(room.players).length === 0) {
+                delete rooms[code];
+            } else {
+                if (wasHost && !room.playing) {
+                    let newHostId = Object.keys(room.players)[0];
+                    room.players[newHostId].isHost = true;
+                    io.to(newHostId).emit('youAreHost');
+                }
+                io.to(code).emit('updateLobby', Object.keys(room.players).length);
+            }
         }
     });
 });
@@ -178,7 +204,10 @@ setInterval(() => {
 
         if (!room.boss) {
             for (let i = room.asteroids.length - 1; i >= 0; i--) {
-                let a = room.asteroids[i]; a.x += a.vx; a.y += a.vy;
+                let a = room.asteroids[i]; 
+                if (!a) continue; // Parche de seguridad
+                
+                a.x += a.vx; a.y += a.vy;
                 if (a.x < -a.r) a.x = CANVAS_WIDTH + a.r; else if (a.x > CANVAS_WIDTH + a.r) a.x = -a.r;
                 if (a.y < -a.r) a.y = CANVAS_HEIGHT + a.r; else if (a.y > CANVAS_HEIGHT + a.r) a.y = -a.r;
 
@@ -192,6 +221,7 @@ setInterval(() => {
                         room.score += 100;
                         if (a.r > 15) { spawnAsteroids(room, 1, a.x, a.y, a.r / 2); spawnAsteroids(room, 1, a.x, a.y, a.r / 2); }
                         room.asteroids.splice(i, 1); room.lasers.splice(j, 1); destroyed = true;
+                        
                         if (room.score >= room.nextGoal) {
                             room.level++; room.nextGoal += 1000 + (room.level * 200);
                             let extraLife = false; for(let pid in room.players) { if(room.players[pid].lives < 3 && room.players[pid].lives > 0) { room.players[pid].lives++; extraLife = true; } }
@@ -201,13 +231,17 @@ setInterval(() => {
                         break;
                     }
                 }
-                if (destroyed) continue;
+                if (destroyed) {
+                    if (room.boss) break; // ¡EVITA EL CRASHEO AL BORRAR ASTEROIDES!
+                    continue;
+                }
             }
-            if (room.asteroids.length < 2) spawnAsteroids(room, 1);
+            if (!room.boss && room.asteroids.length < 2) spawnAsteroids(room, 1);
         }
 
         io.to(code).emit('gameState', room);
     }
 }, 1000 / 60);
 
-server.listen(3000, () => console.log('🚀 Server port 3000'));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Servidor en la nube escuchando en el puerto ${PORT}`));
