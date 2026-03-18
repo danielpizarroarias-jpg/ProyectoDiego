@@ -2,88 +2,45 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asteroids Co-op</title>
+    <title>Neon Co-op Online</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; cursor: crosshair; user-select: none; font-family: 'Courier New', monospace; }
-        canvas { display: block; }
-        
-        #lobby-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; z-index: 300; }
-        .box { border: 4px solid #fff; padding: 40px; text-align: center; width: 350px; color: #fff; }
-        .box input, .box button { width: 90%; padding: 12px; margin: 10px 0; font-family: 'Courier New', monospace; font-weight: bold; font-size: 16px; }
-        .box input { background: #111; color: #00f2ff; border: 1px solid #444; text-align: center; }
-        .box button { background: #000; color: #fff; border: 2px solid #fff; cursor: pointer; text-transform: uppercase; }
-        .box button:hover { background: #fff; color: #000; }
-
-        #money-panel { position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.9); border: 2px solid #ffd700; padding: 10px 20px; border-radius: 50px; color: #ffd700; font-size: 24px; font-weight: bold; z-index: 20; }
-        #ui-left { position: absolute; top: 20px; left: 20px; color: white; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 15px; border: 1px solid #444; border-radius: 4px; min-width: 200px; }
-        #bar-bg { width: 100%; height: 8px; background: #222; margin-top: 10px; border-radius: 4px; overflow: hidden; }
-        #bar-fill { height: 100%; background: #00f2ff; width: 0%; transition: width 0.2s; }
-        #level-notice { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff00ff; font-size: 50px; font-weight: bold; text-align: center; text-shadow: 0 0 20px #ff00ff; pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 100; }
-        #boss-ui { position:absolute; top:20px; left:50%; transform:translateX(-50%); width:300px; text-align:center; z-index:50; }
-        
-        #shop-menu, #boss-reward-menu, #game-over-menu { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #000; z-index: 150; border: 4px solid #fff; width: 380px; padding: 40px; text-align: center; color: white; }
-        #shop-menu { border-color: #ffd700; } #boss-reward-menu { border-color: #ff00ff; } #game-over-menu { border-color: #ff0000; }
-        .reward-btn { border-color: #ff00ff; color: #ff00ff; }
-        button { background: #000; color: #fff; border: 2px solid #fff; padding: 12px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; text-transform: uppercase; width: 100%; font-family: 'Courier New', monospace;}
-        button:hover { background: #fff; color: #000; }
-        .hidden { display: none !important; }
+        body, html { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000; color:#fff; font-family:'Courier New', monospace; }
+        canvas { display:block; cursor:crosshair; }
+        .hidden { display:none !important; }
+        #lobby-container { position:absolute; top:0; left:0; width:100%; height:100%; background:#000; display:flex; justify-content:center; align-items:center; z-index:300; }
+        .box { border:4px solid #fff; padding:30px; text-align:center; width:380px; }
+        input, button { width:90%; padding:12px; margin:8px 0; font-weight:bold; font-size:16px; font-family:'Courier New'; border:2px solid #fff; background:#000; color:#fff; }
+        input { border-color:#444; color:#00f2ff; text-align:center; }
+        button:hover { background:#fff; color:#000; cursor:pointer; }
+        #ranking-list { list-style:none; padding:0; text-align:left; color:#0f0; font-size:14px; margin-top:10px; }
+        #game-ui { position:absolute; top:20px; left:20px; pointer-events:none; }
     </style>
 </head>
 <body>
 
     <div id="lobby-container">
         <div id="main-menu" class="box">
-            <h1 style="color: #00f2ff; margin-top:0;">NEON CO-OP</h1>
+            <h1 style="color:#00f2ff; margin-bottom:20px;">NEON CO-OP</h1>
+            <input type="text" id="username" placeholder="TU NOMBRE" maxlength="12">
             <button onclick="createRoom()">CREAR SALA</button>
-            <hr style="border-color: #333; margin: 20px 0;">
-            <input type="text" id="roomCode" placeholder="CÓDIGO DE SALA">
+            <input type="text" id="roomCode" placeholder="CÓDIGO SALA">
             <button onclick="joinRoom()">UNIRSE</button>
-            <p id="errorMsg" style="color:#ff0000;"></p>
+            <div style="margin-top:20px; border-top:1px solid #333; padding-top:10px;">
+                <h3 style="color:#ffd700;">TOP 5 MUNDIAL</h3>
+                <ul id="ranking-list"><li>Cargando ranking...</li></ul>
+            </div>
         </div>
         <div id="wait-menu" class="box hidden">
-            <h2 style="color: #ff00ff;">SALA: <span id="display-code"></span></h2>
-            <p>Pilotos conectados: <span id="player-count">1</span></p>
-            <button id="btn-start" class="hidden" onclick="startGame()">INICIAR MISIÓN</button>
-            <p id="wait-txt">Esperando al líder...</p>
-            <button onclick="leaveRoom()" style="border-color: #ff0055; color: #ff0055; margin-top: 20px;">CANCELAR Y VOLVER</button>
+            <h2 style="color:#ff00ff;">SALA: <span id="display-code"></span></h2>
+            <button id="btn-start" class="hidden" onclick="startGame()">INICIAR</button>
+            <button onclick="location.reload()">SALIR</button>
         </div>
     </div>
 
     <div id="game-ui" class="hidden">
-        <div id="money-panel"><span id="money-count">0</span></div>
-        <div id="ui-left">
-            <div>SECTOR: <span id="lvl-txt" style="color:#00f2ff">1</span></div>
-            <div id="bar-bg"><div id="bar-fill"></div></div>
-            <div style="margin-top:10px">VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
-            <div style="margin-top:10px; font-size: 12px; color: #aaa;">[ B ] Abrir Tienda</div>
-        </div>
-        <div id="level-notice">SECTOR 2</div>
-        <div id="boss-ui" class="hidden">
-            <div style="color:red; font-weight:bold">BOSS</div>
-            <div style="width:100%; height:10px; background:#300; border:1px solid red;"><div id="boss-hp-fill" style="height:100%; background:red; width:100%; transition: width 0.2s;"></div></div>
-        </div>
-
-        <div id="game-over-menu" class="hidden">
-            <h1 style="color:#ff0000; margin-top:0">NAVE DESTRUIDA</h1>
-            <p>Has perdido todas tus vidas.</p><p>¡Tus amigos siguen luchando!</p>
-            <button onclick="location.reload()" style="border-color: #ff0055; color: #ff0055;">SALIR AL LOBBY</button>
-        </div>
-
-        <div id="shop-menu" class="hidden">
-            <h2 style="color:#ffd700">TIENDA</h2>
-            <p>COSTE: <span id="next-price">50</span> ORO</p>
-            <button onclick="buyUpgrade('fireRate')">CADENCIA</button>
-            <button onclick="buyUpgrade('thrust')">MOTOR</button>
-            <button id="btn-multishot" style="color:#00f2ff; border-color:#00f2ff" class="hidden" onclick="buyUpgrade('multishot')">BALA EXTRA</button>
-            <button style="border-color: #aaa; color: #aaa;" onclick="toggleShop()">CERRAR [B]</button>
-        </div>
-
-        <div id="boss-reward-menu" class="hidden">
-            <h2 style="color:#ff00ff">BOSS DESTRUIDO</h2>
-            <button class="reward-btn" onclick="applySuperUpgrade('bala')">BALA EXTRA</button>
-            <button class="reward-btn" onclick="applySuperUpgrade('cadencia')">SUPER CADENCIA</button>
-            <button class="reward-btn" onclick="applySuperUpgrade('motor')">SUPER MOTOR</button>
-        </div>
+        <div>SECTOR: <span id="lvl-txt" style="color:#00f2ff">1</span></div>
+        <div>PUNTOS: <span id="score-txt" style="color:#ffd700">0</span></div>
+        <div>VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
     </div>
 
     <canvas id="canvas" class="hidden"></canvas>
@@ -93,51 +50,26 @@
         const socket = io();
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        
-        let mouse = { x: 0, y: 0 }, keys = {}, isShooting = false, shopOpen = false;
+        let mouse={x:0,y:0}, keys={}, isShooting=false, scoreSaved=false, localPlayer=null;
 
-        function resize() { 
-            canvas.width = 1200; canvas.height = 800; 
-            canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
-        }
-        window.addEventListener('resize', resize); resize();
-
-        // --- LOBBY ---
         function createRoom() { socket.emit('createRoom'); }
         function joinRoom() { socket.emit('joinRoom', document.getElementById('roomCode').value.toUpperCase()); }
-        
-        function startGame() { 
-            const roomCode = document.getElementById('display-code').innerText;
-            socket.emit('startGame', roomCode); 
-        }
+        function startGame() { socket.emit('startGame', document.getElementById('display-code').innerText); }
 
-        // --- NUEVA FUNCIÓN PARA CANCELAR ---
-        function leaveRoom() {
-            socket.emit('leaveRoom');
-            document.getElementById('wait-menu').classList.add('hidden');
-            document.getElementById('main-menu').classList.remove('hidden');
-        }
-
-        socket.on('roomCreated', code => showWait(code, true));
-        socket.on('joinedRoom', code => showWait(code, false));
-        socket.on('errorMsg', msg => document.getElementById('errorMsg').innerText = msg);
-        socket.on('updateLobby', count => document.getElementById('player-count').innerText = count);
-        
-        // Si el líder se va, tú te conviertes en líder
-        socket.on('youAreHost', () => {
-            document.getElementById('btn-start').classList.remove('hidden');
-            document.getElementById('wait-txt').classList.add('hidden');
+        socket.on('roomCreated', c => showWait(c, true));
+        socket.on('joinedRoom', c => showWait(c, false));
+        socket.on('youAreHost', () => document.getElementById('btn-start').classList.remove('hidden'));
+        socket.on('receiveRanking', data => {
+            document.getElementById('ranking-list').innerHTML = data.map((s,i)=>`<li>${i+1}. ${s.username} - ${s.score}</li>`).join('');
         });
 
-        function showWait(code, isHost) {
+        function showWait(c, host) {
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('wait-menu').classList.remove('hidden');
-            document.getElementById('display-code').innerText = code;
-            if(isHost) { document.getElementById('btn-start').classList.remove('hidden'); document.getElementById('wait-txt').classList.add('hidden'); }
-            else { document.getElementById('btn-start').classList.add('hidden'); document.getElementById('wait-txt').classList.remove('hidden'); }
+            document.getElementById('display-code').innerText = c;
+            if(host) document.getElementById('btn-start').classList.remove('hidden');
         }
 
-        // --- JUEGO ---
         socket.on('gameStarted', () => {
             document.getElementById('lobby-container').classList.add('hidden');
             document.getElementById('game-ui').classList.remove('hidden');
@@ -145,59 +77,33 @@
         });
 
         window.addEventListener('mousemove', e => { 
-            const rect = canvas.getBoundingClientRect();
-            mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width); mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const r = canvas.getBoundingClientRect();
+            mouse.x = (e.clientX - r.left) * (1200 / r.width); mouse.y = (e.clientY - r.top) * (800 / r.height);
         });
-        window.addEventListener('mousedown', e => { if (e.button === 0) isShooting = true; });
-        window.addEventListener('mouseup', e => { if (e.button === 0) isShooting = false; });
-        window.addEventListener('mouseleave', () => isShooting = false);
-        window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code === 'KeyB') toggleShop(); });
+        window.addEventListener('mousedown', () => isShooting = true);
+        window.addEventListener('mouseup', () => isShooting = false);
+        window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        let localPlayer = null;
         setInterval(() => {
             if(!localPlayer) return;
-            let angle = Math.atan2(mouse.y - localPlayer.y, mouse.x - localPlayer.x);
-            socket.emit('playerInput', { keys, angle, isShooting });
+            socket.emit('playerInput', { keys, angle: Math.atan2(mouse.y-localPlayer.y, mouse.x-localPlayer.x), isShooting });
         }, 1000/60);
 
-        function toggleShop() {
-            if(!localPlayer) return;
-            shopOpen = !shopOpen;
-            if(shopOpen) { document.getElementById('shop-menu').classList.remove('hidden'); document.getElementById('btn-multishot').classList.toggle('hidden', (localPlayer.upgradeCount + 1) % 2 !== 0); } 
-            else { document.getElementById('shop-menu').classList.add('hidden'); }
-        }
-        function buyUpgrade(type) { socket.emit('buyUpgrade', type); toggleShop(); }
-        function applySuperUpgrade(type) { socket.emit('applySuperUpgrade', type); document.getElementById('boss-reward-menu').classList.add('hidden'); }
-
-        socket.on('levelUp', (data) => {
-            const notice = document.getElementById('level-notice');
-            notice.innerHTML = `SECTOR ${data.level}` + (data.extraLife ? "<br><span style='font-size:25px'>+1 VIDA</span>" : "");
-            notice.style.opacity = 1; setTimeout(() => notice.style.opacity = 0, 1500);
-        });
-
-        socket.on('bossDefeated', () => {
-            document.getElementById('boss-ui').classList.add('hidden');
-            document.getElementById('boss-reward-menu').classList.remove('hidden');
-        });
-
         socket.on('gameState', (room) => {
-            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000'; ctx.fillRect(0,0,1200,800);
             localPlayer = room.players[socket.id];
-            
             if (localPlayer) {
-                document.getElementById('money-count').innerText = "● " + localPlayer.money;
                 document.getElementById('lvl-txt').innerText = room.level;
+                document.getElementById('score-txt').innerText = room.score;
                 document.getElementById('lives-txt').innerText = "▲ ".repeat(Math.max(0, localPlayer.lives));
-                document.getElementById('next-price').innerText = localPlayer.upgradeCost;
-                
-                let prog = ((room.score - (room.nextGoal - (1000 + room.level*200))) / (1000 + room.level*200)) * 100;
-                document.getElementById('bar-fill').style.width = Math.max(0, Math.min(100, prog)) + "%";
-
-                if (localPlayer.lives <= 0) document.getElementById('game-over-menu').classList.remove('hidden');
-                if (shopOpen && localPlayer.money < localPlayer.upgradeCost) toggleShop();
+                if (localPlayer.lives <= 0 && !scoreSaved) {
+                    socket.emit('saveScore', { name: document.getElementById('username').value || "PILOTO", score: room.score });
+                    scoreSaved = true;
+                    alert("GAME OVER. PUNTOS GUARDADOS.");
+                    location.reload();
+                }
             }
-
             for (let a of room.asteroids) {
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath();
                 for(let j=0; j<a.vert; j++) {
@@ -205,36 +111,18 @@
                 }
                 ctx.closePath(); ctx.stroke();
             }
-
             for (let l of room.lasers) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(l.x, l.y, 2, 0, 7); ctx.fill(); }
-
-            if (room.boss) {
-                document.getElementById('boss-ui').classList.remove('hidden');
-                document.getElementById('boss-hp-fill').style.width = (room.boss.hp / room.boss.maxHp * 100) + "%";
-                let b = room.boss; ctx.strokeStyle = '#f00'; ctx.lineWidth = 4; ctx.beginPath();
-                ctx.moveTo(b.x, b.y + 50); ctx.lineTo(b.x - 70, b.y - 20); ctx.lineTo(b.x + 70, b.y - 20); ctx.closePath(); ctx.stroke();
-                ctx.strokeRect(b.x - 20, b.y - 35, 40, 15); ctx.beginPath(); ctx.moveTo(b.x - 50, b.y + 10); ctx.lineTo(b.x - 30, b.y - 10);
-                ctx.moveTo(b.x + 50, b.y + 10); ctx.lineTo(b.x + 30, b.y - 10); ctx.stroke();
-            } else document.getElementById('boss-ui').classList.add('hidden');
-
-            for (let el of room.enemyLasers) {
-                if (el.homing) { ctx.fillStyle = '#ff8800'; ctx.beginPath(); ctx.arc(el.x, el.y, el.size||10, 0, Math.PI*2); ctx.fill(); } 
-                else { let s = el.size||8; ctx.fillStyle = '#f00'; ctx.fillRect(el.x - s/2, el.y, s, s * 2.5); }
-            }
-
             for (let id in room.players) {
-                let p = room.players[id];
-                if (p.lives <= 0) continue;
-                if (p.blink === 0 || Math.floor(p.blink / 10) % 2 === 0) {
-                    ctx.strokeStyle = (id === socket.id) ? '#00f2ff' : '#fff'; 
-                    ctx.lineWidth = 2; ctx.beginPath();
-                    ctx.moveTo(p.x + Math.cos(p.angle)*15, p.y + Math.sin(p.angle)*15);
-                    ctx.lineTo(p.x + Math.cos(p.angle+2.4)*12, p.y + Math.sin(p.angle+2.4)*12);
-                    ctx.lineTo(p.x + Math.cos(p.angle-2.4)*12, p.y + Math.sin(p.angle-2.4)*12);
-                    ctx.closePath(); ctx.stroke();
-                }
+                let p = room.players[id]; if (p.lives <= 0) continue;
+                ctx.strokeStyle = (id === socket.id) ? '#00f2ff' : '#fff';
+                ctx.lineWidth = 2; ctx.beginPath();
+                ctx.moveTo(p.x + Math.cos(p.angle)*15, p.y + Math.sin(p.angle)*15);
+                ctx.lineTo(p.x + Math.cos(p.angle+2.4)*12, p.y + Math.sin(p.angle+2.4)*12);
+                ctx.lineTo(p.x + Math.cos(p.angle-2.4)*12, p.y + Math.sin(p.angle-2.4)*12);
+                ctx.closePath(); ctx.stroke();
             }
         });
+        socket.emit('getRanking');
     </script>
 </body>
 </html>
