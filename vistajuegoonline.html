@@ -4,125 +4,415 @@
     <meta charset="UTF-8">
     <title>Neon Co-op Online</title>
     <style>
-        body, html { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000; color:#fff; font-family:'Courier New', monospace; }
-        canvas { display:block; cursor:crosshair; }
-        .hidden { display:none !important; }
-        #lobby-container { position:absolute; top:0; left:0; width:100%; height:100%; background:#000; display:flex; justify-content:center; align-items:center; z-index:300; }
-        .box { border:4px solid #fff; padding:30px; text-align:center; width:380px; }
-        input, button { width:90%; padding:12px; margin:8px 0; font-weight:bold; font-size:16px; font-family:'Courier New'; border:2px solid #fff; background:#000; color:#fff; }
-        input { border-color:#444; color:#00f2ff; text-align:center; }
-        button:hover { background:#fff; color:#000; cursor:pointer; }
-        #ranking-list { list-style:none; padding:0; text-align:left; color:#0f0; font-size:14px; margin-top:10px; }
-        #game-ui { position:absolute; top:20px; left:20px; pointer-events:none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; cursor: crosshair; user-select: none; }
+        canvas { display: block; margin: 0 auto; }
+        
+        /* UI MONEDAS */
+        #money-panel {
+            position: absolute; top: 20px; right: 20px; 
+            background: rgba(0, 0, 0, 0.9); border: 2px solid #ffd700;
+            padding: 10px 20px; border-radius: 50px; color: #ffd700;
+            font-family: 'Courier New', monospace; font-size: 24px; font-weight: bold; z-index: 20;
+        }
+
+        /* UI IZQUIERDA */
+        #ui-left {
+            position: absolute; top: 20px; left: 20px; color: white; font-family: 'Courier New', monospace;
+            z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 15px; border: 1px solid #444; border-radius: 4px; min-width: 200px;
+        }
+        #bar-bg { width: 100%; height: 8px; background: #222; margin-top: 10px; border-radius: 4px; overflow: hidden; }
+        #bar-fill { height: 100%; background: #00f2ff; width: 0%; }
+
+        /* MENSAJE VIOLETA FOSFORESCENTE CENTRADO */
+        #level-notice {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ff00ff; font-family: 'Courier New', monospace; font-size: 50px; font-weight: bold;
+            text-align: center; text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+            pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 100;
+        }
+
+        /* MENÚS */
+        #shop-menu, #boss-reward-menu, #pause-menu, #game-over-menu, #lobby-container { 
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            background: #000; z-index: 150; border: 4px solid #fff; 
+            width: 380px; padding: 40px; text-align: center; color: white; font-family: 'Courier New', monospace;
+        }
+        #shop-menu { border-color: #ffd700; }
+        #boss-reward-menu { border-color: #ff00ff; }
+        #game-over-menu { border-color: #ff0000; }
+        #lobby-container { background: #000; display: flex; justify-content: center; align-items: center; }
+        
+        .box { border: 4px solid #fff; padding: 30px; text-align: center; width: 380px; }
+        
+        input, button { width: 90%; padding: 12px; margin: 8px 0; font-weight: bold; font-size: 16px; font-family: 'Courier New', monospace; border: 2px solid #fff; background: #000; color: #fff; }
+        input { border-color: #444; color: #00f2ff; text-align: center; }
+        button:hover { background: #fff; color: #000; cursor: pointer; }
+        
+        .hidden { display: none !important; }
+        
+        #boss-ui { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; text-align: center; font-family: monospace; z-index: 50; }
+        #boss-ui-inner { color: red; font-weight: bold; }
+        #boss-hp-fill { height: 100%; background: red; width: 100%; }
+        
+        #ranking-list { list-style: none; padding: 0; text-align: left; color: #0f0; font-size: 14px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
+    <!-- LOBBY -->
     <div id="lobby-container">
         <div id="main-menu" class="box">
-            <h1 style="color:#00f2ff; margin-bottom:20px;">NEON CO-OP</h1>
+            <h1 style="color: #00f2ff; margin-bottom: 20px;">NEON CO-OP</h1>
             <input type="text" id="username" placeholder="TU NOMBRE" maxlength="12">
             <button onclick="createRoom()">CREAR SALA</button>
             <input type="text" id="roomCode" placeholder="CÓDIGO SALA">
             <button onclick="joinRoom()">UNIRSE</button>
-            <div style="margin-top:20px; border-top:1px solid #333; padding-top:10px;">
-                <h3 style="color:#ffd700;">TOP 5 MUNDIAL</h3>
+            <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
+                <h3 style="color: #ffd700;">TOP 5 MUNDIAL</h3>
                 <ul id="ranking-list"><li>Cargando ranking...</li></ul>
             </div>
         </div>
         <div id="wait-menu" class="box hidden">
-            <h2 style="color:#ff00ff;">SALA: <span id="display-code"></span></h2>
+            <h2 style="color: #ff00ff;">SALA: <span id="display-code"></span></h2>
+            <p style="color: #aaa;">Jugadores: <span id="player-count">1</span></p>
             <button id="btn-start" class="hidden" onclick="startGame()">INICIAR</button>
             <button onclick="location.reload()">SALIR</button>
         </div>
     </div>
 
-    <div id="game-ui" class="hidden">
+    <!-- GAME UI -->
+    <div id="money-panel" class="hidden"><span id="money-count">0</span></div>
+
+    <div id="ui-left" class="hidden">
         <div>SECTOR: <span id="lvl-txt" style="color:#00f2ff">1</span></div>
-        <div>PUNTOS: <span id="score-txt" style="color:#ffd700">0</span></div>
-        <div>VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
+        <div id="bar-bg"><div id="bar-fill"></div></div>
+        <div style="margin-top:10px">VIDAS: <span id="lives-txt" style="color:#ff0077"></span></div>
+        <div style="margin-top:10px">JUGADORES: <span id="players-count" style="color:#0f0">0</span></div>
     </div>
 
-    <canvas id="canvas" class="hidden"></canvas>
+    <div id="level-notice">SECTOR 2<br><span style="font-size:25px">+1 VIDA</span></div>
+
+    <div id="pause-menu" class="hidden">
+        <h1 style="margin-top:0">PAUSA</h1>
+        <button onclick="togglePause()">CONTINUAR</button>
+        <button onclick="location.reload()">SALIR</button>
+    </div>
+
+    <div id="game-over-menu" class="hidden">
+        <h1 style="color:#ff0000; margin-top:0">FIN DEL JUEGO</h1>
+        <p>Tu nave ha sido destruida.</p>
+        <button onclick="location.reload()">REINTENTAR</button>
+    </div>
+
+    <div id="boss-ui" class="hidden" style="width: 300px; height: 20px; background: #300; border: 1px solid red;">
+        <div id="boss-hp-fill" style="height: 100%; background: red; width: 100%;"></div>
+    </div>
+
+    <div id="shop-menu" class="hidden">
+        <h2 style="color:#ffd700">TIENDA</h2>
+        <p>COSTE: <span id="next-price">50</span> ORO</p>
+        <button onclick="buyUpgrade('fireRate')">CADENCIA</button>
+        <button onclick="buyUpgrade('thrust')">MOTOR</button>
+        <button id="btn-multishot" style="color:#00f2ff; border-color:#00f2ff" class="hidden" onclick="buyUpgrade('multishot')">BALA EXTRA</button>
+    </div>
+
+    <div id="boss-reward-menu" class="hidden">
+        <h2 style="color:#ff00ff">BOSS DESTRUIDO</h2>
+        <button class="reward-btn" onclick="applySuperUpgrade('bala')">BALA EXTRA</button>
+        <button class="reward-btn" onclick="applySuperUpgrade('cadencia')">SUPER CADENCIA</button>
+        <button class="reward-btn" onclick="applySuperUpgrade('motor')">SUPER MOTOR</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        const CANVAS_WIDTH = 1200;
+        const CANVAS_HEIGHT = 800;
+        
         const socket = io();
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        let mouse={x:0,y:0}, keys={}, isShooting=false, scoreSaved=false, localPlayer=null;
-
-        function createRoom() { socket.emit('createRoom'); }
-        function joinRoom() { socket.emit('joinRoom', document.getElementById('roomCode').value.toUpperCase()); }
-        function startGame() { socket.emit('startGame', document.getElementById('display-code').innerText); }
-
-        socket.on('roomCreated', c => showWait(c, true));
-        socket.on('joinedRoom', c => showWait(c, false));
+        
+        // Set canvas to server dimensions
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+        
+        // Scale canvas with CSS to fit screen while maintaining aspect ratio
+        function resizeCanvas() {
+            const scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
+            canvas.style.width = (CANVAS_WIDTH * scale * 0.95) + 'px';
+            canvas.style.height = (CANVAS_HEIGHT * scale * 0.95) + 'px';
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        let mouse = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+        let keys = {};
+        let isShooting = false;
+        let scoreSaved = false;
+        let localPlayer = null;
+        let gameState = 'LOBBY';
+        let currentRoom = null;
+        let username = '';
+        
+        function createRoom() { 
+            username = document.getElementById('username').value || 'PILOTO';
+            socket.emit('createRoom'); 
+        }
+        function joinRoom() { 
+            username = document.getElementById('username').value || 'PILOTO';
+            socket.emit('joinRoom', document.getElementById('roomCode').value.toUpperCase()); 
+        }
+        function startGame() { 
+            socket.emit('startGame', currentRoom); 
+        }
+        function togglePause() {
+            if (gameState === 'PLAYING') {
+                gameState = 'PAUSED';
+                document.getElementById('pause-menu').classList.remove('hidden');
+            } else if (gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                document.getElementById('pause-menu').classList.add('hidden');
+            }
+        }
+        
+        socket.on('roomCreated', c => { currentRoom = c; showWait(c, true); });
+        socket.on('joinedRoom', c => { currentRoom = c; showWait(c, false); });
         socket.on('youAreHost', () => document.getElementById('btn-start').classList.remove('hidden'));
-        socket.on('receiveRanking', data => {
-            document.getElementById('ranking-list').innerHTML = data.map((s,i)=>`<li>${i+1}. ${s.username} - ${s.score}</li>`).join('');
+        socket.on('updateLobby', count => {
+            document.getElementById('player-count').innerText = count;
         });
-
+        
+        socket.on('receiveRanking', data => {
+            if (data.scores && data.scores.length > 0) {
+                document.getElementById('ranking-list').innerHTML = data.scores.map((s, i) => 
+                    `<li>${i + 1}. ${s.username} - ${s.score}</li>`
+                ).join('');
+            }
+        });
+        
         function showWait(c, host) {
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('wait-menu').classList.remove('hidden');
             document.getElementById('display-code').innerText = c;
-            if(host) document.getElementById('btn-start').classList.remove('hidden');
+            if (host) document.getElementById('btn-start').classList.remove('hidden');
         }
-
+        
         socket.on('gameStarted', () => {
             document.getElementById('lobby-container').classList.add('hidden');
-            document.getElementById('game-ui').classList.remove('hidden');
-            canvas.classList.remove('hidden');
+            document.getElementById('money-panel').classList.remove('hidden');
+            document.getElementById('ui-left').classList.remove('hidden');
+            gameState = 'PLAYING';
+            scoreSaved = false;
         });
-
-        window.addEventListener('mousemove', e => { 
-            const r = canvas.getBoundingClientRect();
-            mouse.x = (e.clientX - r.left) * (1200 / r.width); mouse.y = (e.clientY - r.top) * (800 / r.height);
-        });
-        window.addEventListener('mousedown', () => isShooting = true);
-        window.addEventListener('mouseup', () => isShooting = false);
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
-        setInterval(() => {
-            if(!localPlayer) return;
-            socket.emit('playerInput', { keys, angle: Math.atan2(mouse.y-localPlayer.y, mouse.x-localPlayer.x), isShooting });
-        }, 1000/60);
-
+        
         socket.on('gameState', (room) => {
-            ctx.fillStyle = '#000'; ctx.fillRect(0,0,1200,800);
-            localPlayer = room.players[socket.id];
-            if (localPlayer) {
-                document.getElementById('lvl-txt').innerText = room.level;
-                document.getElementById('score-txt').innerText = room.score;
-                document.getElementById('lives-txt').innerText = "▲ ".repeat(Math.max(0, localPlayer.lives));
-                if (localPlayer.lives <= 0 && !scoreSaved) {
-                    socket.emit('saveScore', { name: document.getElementById('username').value || "PILOTO", score: room.score });
-                    scoreSaved = true;
-                    alert("GAME OVER. PUNTOS GUARDADOS.");
-                    location.reload();
-                }
-            }
-            for (let a of room.asteroids) {
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath();
-                for(let j=0; j<a.vert; j++) {
-                    let ang = (j / a.vert) * Math.PI * 2; ctx.lineTo(a.x + Math.cos(ang) * a.r * a.offsets[j], a.y + Math.sin(ang) * a.r * a.offsets[j]);
-                }
-                ctx.closePath(); ctx.stroke();
-            }
-            for (let l of room.lasers) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(l.x, l.y, 2, 0, 7); ctx.fill(); }
-            for (let id in room.players) {
-                let p = room.players[id]; if (p.lives <= 0) continue;
-                ctx.strokeStyle = (id === socket.id) ? '#00f2ff' : '#fff';
-                ctx.lineWidth = 2; ctx.beginPath();
-                ctx.moveTo(p.x + Math.cos(p.angle)*15, p.y + Math.sin(p.angle)*15);
-                ctx.lineTo(p.x + Math.cos(p.angle+2.4)*12, p.y + Math.sin(p.angle+2.4)*12);
-                ctx.lineTo(p.x + Math.cos(p.angle-2.4)*12, p.y + Math.sin(p.angle-2.4)*12);
-                ctx.closePath(); ctx.stroke();
+            currentRoom = room.code || currentRoom;
+            renderGame(room);
+        });
+        
+        socket.on('levelUp', (data) => {
+            const notice = document.getElementById('level-notice');
+            notice.innerHTML = "SECTOR " + data.level + (data.extraLife ? "<br><span style='font-size:25px'>+1 VIDA</span>" : "");
+            notice.style.opacity = 1;
+            setTimeout(() => notice.style.opacity = 0, 1500);
+        });
+        
+        socket.on('shopAvailable', () => {
+            gameState = 'SHOPPING';
+            document.getElementById('shop-menu').classList.remove('hidden');
+        });
+        
+        socket.on('bossAppeared', () => {
+            document.getElementById('boss-ui').classList.remove('hidden');
+        });
+        
+        socket.on('bossDefeated', () => {
+            document.getElementById('boss-ui').classList.add('hidden');
+            document.getElementById('boss-reward-menu').classList.remove('hidden');
+            gameState = 'REWARD';
+        });
+        
+        socket.on('gameOver', () => {
+            gameState = 'GAMEOVER';
+            document.getElementById('game-over-menu').classList.remove('hidden');
+            if (!scoreSaved) {
+                scoreSaved = true;
             }
         });
-        socket.emit('getRanking');
+        
+        function buyUpgrade(type) {
+            socket.emit('buyUpgrade', { room: currentRoom, type: type });
+        }
+        
+        function applySuperUpgrade(type) {
+            socket.emit('applySuperUpgrade', { room: currentRoom, type: type });
+        }
+        
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = CANVAS_WIDTH / rect.width;
+            const scaleY = CANVAS_HEIGHT / rect.height;
+            mouse.x = (e.clientX - rect.left) * scaleX;
+            mouse.y = (e.clientY - rect.top) * scaleY;
+        });
+        
+        window.addEventListener('mousedown', e => {
+            if (e.button === 0) {
+                isShooting = true;
+                if (gameState === 'PLAYING') shoot();
+            }
+        });
+        
+        window.addEventListener('mouseup', e => {
+            if (e.button === 0) isShooting = false;
+        });
+        
+        window.addEventListener('mouseleave', () => isShooting = false);
+        
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Escape') togglePause();
+            keys[e.code] = true;
+        });
+        
+        window.addEventListener('keyup', e => keys[e.code] = false);
+        
+        function shoot() {
+            // Shooting is handled by server based on isShooting state
+        }
+        
+        // Send input to server
+        setInterval(() => {
+            if (gameState === 'PLAYING' && localPlayer) {
+                const angle = Math.atan2(mouse.y - localPlayer.y, mouse.x - localPlayer.x);
+                socket.emit('playerInput', { 
+                    keys: keys, 
+                    angle: angle, 
+                    isShooting: isShooting 
+                });
+            }
+        }, 1000 / 60);
+        
+        function renderGame(room) {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            if (!room) return;
+            
+            localPlayer = room.players[socket.id];
+            
+            // Update UI
+            if (localPlayer) {
+                document.getElementById('money-count').innerText = "● " + (localPlayer.money || 0);
+                document.getElementById('lvl-txt').innerText = room.level;
+                document.getElementById('lives-txt').innerText = "▲ ".repeat(Math.max(0, localPlayer.lives));
+                document.getElementById('players-count').innerText = Object.keys(room.players).length;
+                
+                let prog = ((room.score - (room.nextGoal - (1000 + room.level * 200))) / (1000 + room.level * 200)) * 100;
+                document.getElementById('bar-fill').style.width = Math.max(0, Math.min(100, prog)) + "%";
+                document.getElementById('next-price').innerText = localPlayer.upgradeCost || 50;
+                
+                if (localPlayer.lives <= 0 && !scoreSaved) {
+                    scoreSaved = true;
+                    socket.emit('saveScore', { 
+                        name: username, 
+                        score: room.score,
+                        mode: 'online'
+                    });
+                    setTimeout(() => {
+                        gameState = 'GAMEOVER';
+                        document.getElementById('game-over-menu').classList.remove('hidden');
+                    }, 500);
+                }
+            }
+            
+            // Draw asteroids
+            for (let a of room.asteroids) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let j = 0; j < a.vert; j++) {
+                    let ang = (j / a.vert) * Math.PI * 2;
+                    ctx.lineTo(a.x + Math.cos(ang) * a.r * a.offsets[j], a.y + Math.sin(ang) * a.r * a.offsets[j]);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            
+            // Draw boss
+            if (room.boss) {
+                let boss = room.boss;
+                document.getElementById('boss-hp-fill').style.width = (boss.hp / boss.maxHp * 100) + "%";
+                
+                ctx.strokeStyle = '#f00';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(boss.x, boss.y + 50);
+                ctx.lineTo(boss.x - 70, boss.y - 20);
+                ctx.lineTo(boss.x + 70, boss.y - 20);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.strokeRect(boss.x - 20, boss.y - 35, 40, 15);
+                ctx.beginPath();
+                ctx.moveTo(boss.x - 50, boss.y + 10);
+                ctx.lineTo(boss.x - 30, boss.y - 10);
+                ctx.moveTo(boss.x + 50, boss.y + 10);
+                ctx.lineTo(boss.x + 30, boss.y - 10);
+                ctx.stroke();
+            }
+            
+            // Draw player lasers
+            for (let l of room.lasers) {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(l.x, l.y, 2, 0, 7);
+                ctx.fill();
+            }
+            
+            // Draw enemy lasers
+            for (let el of room.enemyLasers || []) {
+                if (el.homing) {
+                    ctx.fillStyle = '#ff8800';
+                    ctx.beginPath();
+                    ctx.arc(el.x, el.y, el.size || 10, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = '#f00';
+                    ctx.fillRect(el.x - 4, el.y, 8, 20);
+                }
+            }
+            
+            // Draw players
+            for (let id in room.players) {
+                let p = room.players[id];
+                if (p.lives <= 0) continue;
+                
+                // Blink effect during invulnerability
+                if (p.blink > 0 && Math.floor(p.blink / 10) % 2 === 0) continue;
+                
+                // Different colors: local player is cyan, others are white
+                ctx.strokeStyle = (id === socket.id) ? '#00f2ff' : '#fff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(p.x + Math.cos(p.angle) * 15, p.y + Math.sin(p.angle) * 15);
+                ctx.lineTo(p.x + Math.cos(p.angle + 2.4) * 12, p.y + Math.sin(p.angle + 2.4) * 12);
+                ctx.lineTo(p.x + Math.cos(p.angle - 2.4) * 12, p.y + Math.sin(p.angle - 2.4) * 12);
+                ctx.closePath();
+                ctx.stroke();
+                
+                // Draw player name
+                if (id !== socket.id) {
+                    ctx.fillStyle = '#aaa';
+                    ctx.font = '10px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('P2', p.x, p.y - 20);
+                }
+            }
+        }
+        
+        socket.emit('getRanking', 'online');
     </script>
 </body>
 </html>
